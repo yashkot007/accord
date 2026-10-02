@@ -6,7 +6,7 @@ Accord connects personal agents around human relationships and shared purposes. 
 
 ## Starting point
 
-The current app runs on a Cloudflare Worker with D1 storage, a human interface, browser endpoints, and an authenticated MCP endpoint. `lib/workspace.ts` contains most business rules; `lib/host.ts` manages private visits and deterministic routing. Existing tests cover membership, directional grants, revocation, context review, and isolation between owners.
+The current app runs on a Cloudflare Worker with D1 storage, a human interface, browser endpoints, and an authenticated MCP endpoint. `lib/workspace.ts` contains most business rules; `lib/host.ts` manages private visits and deterministic routing. Existing tests cover membership, directional grants, revocation, context review, and isolation between owners. `lib/mcp-http.ts` validates the MCP envelope and fixed tool input schemas before invoking the authenticated service; the route supplies identity. Profile-specific session recovery and paginated inbox/context reads make ongoing work retrievable after a client loses its local conversation history.
 
 Authentication currently identifies a person. Agent profiles belong to that person but do not have independent credentials. Work is retrieved through an inbox; Accord does not wake or execute external agents. Feedback retains its latest value. These are the main boundaries to address before expanding orchestration.
 
@@ -38,13 +38,13 @@ Extract a shared policy service from the existing checks. It evaluates the actor
 
 Use a versioned exchange envelope with the sender, recipient, room, relationship, message type, payload, source references, parent exchange, and request ID. Preserve message history and append state transitions rather than replacing earlier feedback. Keep delivery, acknowledgment, execution, and visitor-reported completion distinct.
 
-Add idempotency to commands that create work or context proposals. Scope request IDs to the authenticated actor and operation. Store a payload fingerprint and result: an identical retry returns the original result; reuse with different input fails. Commit the state change, history, and any outbox entry together.
+Instructions and context proposals now support optional request IDs with payload fingerprints; tests cover identical retries and conflicts. Extend this pattern to other creation commands as needed. Scope request IDs to the authenticated actor and operation. Store a payload fingerprint and result: an identical retry returns the original result; reuse with different input fails. Commit the state change, history, and any outbox entry together.
 
 Keep the pull inbox first. When automatic delivery is introduced, add a transactional outbox, bounded retries, delivery attempts, and a recoverable failed-delivery state. Design for duplicate delivery and recipient deduplication. Stop unauthorized pending delivery after revocation. Do not claim that revocation can recall information an external agent has already received.
 
 ## Context and privacy
 
-Track source provenance, proposed revisions, the receiving owner's decision, and the adopted version. Expiring a grant prevents new influence; it does not silently erase guidance already accepted by its owner. Owners must be able to reconsider adopted guidance.
+The current context records preserve source provenance, the receiving owner's decision, and an incrementing approval version. Decisions reject stale versions and require current authority. A full append-only revision history remains to build. Expiring a grant prevents new influence; it does not silently erase guidance already accepted by its owner. Owners must be able to reconsider adopted guidance.
 
 Keep arrival purpose and departure reports private unless explicitly shared. Departures record what the visitor reported, not verified success. Record authorization decisions without copying private prompts or source bodies into operational logs. Define retention and deletion behavior before broader rollout.
 
@@ -58,7 +58,7 @@ For a classroom or other group, a single human intention creates a separate exch
 
 1. Extract shared policy checks and typed commands while preserving current behavior and transaction guarantees.
 2. Add agent-bound connections and explicit relationships. Verify that one connection cannot act as another agent and that revocation takes effect immediately for new operations.
-3. Add retry-safe commands, exchange history, and context revisions. Validate a real external-client flow through authentication, instruction, feedback, and owner review.
+3. Complete retry coverage, append-only exchange history, and context revisions beyond the current request IDs and approval version guards. Validate a real external-client flow through authentication, instruction, feedback, and owner review.
 4. Add durable delivery and one-to-many dispatch. Test duplicate delivery, retry exhaustion, partial group failure, and revocation between enqueue and dispatch.
 
 Before broader release, also establish migration recovery, backups, request limits, rate limits, and useful operational monitoring. Model-assisted hosting can then use the same authorized commands; it must not bypass the backend's decisions.

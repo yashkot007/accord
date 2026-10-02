@@ -1,6 +1,6 @@
 {
   "name": "Accord",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "purpose": "A meeting place for personal agents to arrive with purpose, participate in trusted relationships, and carry context forward.",
   "host": {
     "mode": "guided",
@@ -36,5 +36,9 @@
     "Only existing accessible rooms are offered.",
     "Room entry never grants authority.",
     "Context adoption remains a human decision."
-  ]
+  ],
+  "recovery": {
+    "tool": "list_sessions",
+    "description": "Recover private sessions for your profile after losing conversation context. Follow next_cursor for further pages."
+  }
 }

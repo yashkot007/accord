@@ -12,6 +12,8 @@ Reviewed 2026-09-30. This assessment uses current official documentation, not ha
 | Controlled sharing | View, comment, and edit roles and inherited access already exist. Sharing does not automatically expose private chats or saved memory. [Collaboration](https://learn.chatgpt.com/docs/space/collaboration), [administration](https://learn.chatgpt.com/docs/enterprise/chatgpt-space) |
 | Ongoing authority | Dots support scoped ongoing instructions and custom action rules. Owners can instruct their dot to engage others in Slack. These features are not equivalent to Accord's relationship grants, but permissions alone are insufficient differentiation. [Controls](https://learn.chatgpt.com/docs/dots/controls), [messaging](https://learn.chatgpt.com/docs/dots/channels) |
 | Context across products | OpenAI supports importing setup and recent work from Claude Code, Claude Cowork, and Cursor, with automatic updates available. This describes import into OpenAI, not reciprocal relationships between providers. [Import](https://learn.chatgpt.com/docs/import) |
+| Externally initiated agent work | Workspace Agents accept asynchronous API triggers, conversation continuity, duplicate-safe acceptance, and beta status polling. Final response text is not available through this API. Access depends on workspace enablement and tokens; this does not establish an API for every personal dot. [Triggers](https://learn.chatgpt.com/workspace-agents/trigger-runs), [authentication](https://learn.chatgpt.com/workspace-agents/authentication) |
+| Event-driven collaboration | ChatGPT supports MCP 2.0 webhook event subscriptions that can initiate user-chosen work, with expiry and access checks. External connection and waking an agent are not sufficient differentiation for Accord. [MCP Events](https://developers.openai.com/plugins/build/mcp-events) |
 
 ## Remaining hypothesis
 
@@ -25,10 +27,14 @@ Accord already records directional grants, expiry, revocation, and recipient con
 
 ## Recommendation
 
-Pause expansion of generic workspace features. A shared room with agent instructions and review is substantially overlapped by Space. Test the narrower relationship exchange before claiming differentiation or committing to broader orchestration. Space may become a source or interface for Accord rather than something users must replace. This is a validation priority, not a restriction to one profession or a committed product pivot.
+Pause expansion of generic workspace features. A shared room with agent instructions and review is substantially overlapped by Space. Test the relationship exchange across providers before claiming differentiation or committing to broader orchestration. Space may become a source or interface for Accord rather than something users must replace. This is a validation priority, not a restriction to one profession or a committed product pivot.
 
 ## Five-pair validation test
 
-Run a one-week pilot with five existing relationships whose participants use different agent products. Compare a shared Space page and manual transfer with one Accord loop: propose guidance, obtain recipient approval, verify its use in a later real task, and withdraw permission to confirm new exchanges stop. Use only integrations actually verified during the pilot.
+Run a one-week pilot with five existing relationships whose participants use different agent products. Compare the strongest native workflow available to each pair—including Space pages, scoped dot instructions, and supported event automation where enabled, as well as manual transfer—with one Accord loop: propose guidance, obtain recipient approval, verify its use in a later real task, and withdraw permission to confirm new exchanges stop. Use only integrations actually verified during the pilot.
 
-Record setup effort, repeated explanation, actual reuse, and voluntary repeat use. As an initial decision gate, advance if at least three pairs independently choose to repeat Accord's flow and identify a concrete benefit over the baseline. This small test guides the next investment; it does not establish market demand. If a shared page suffices, consider a lightweight integration instead of expanding a standalone platform.
+Record setup effort, repeated explanation, actual reuse, and voluntary repeat use. As an initial decision gate, advance if at least three pairs independently choose to repeat Accord's flow and identify a concrete benefit over the baseline. This small test guides the next investment; it does not establish market demand. If existing tools or a lightweight connector suffice, ship the smallest useful integration instead of requiring another workspace. Preserve the broad relationship ambition; test one concrete recurring exchange first.
+
+## Event integration boundary
+
+MCP Events requires treating user-authored event content as data rather than behavioral instructions. A future Accord subscription should notify an authorized recipient that guidance is available for review and link to its source; it must not present a third party’s proposal as overriding authority. Subscriber instructions and receiving-owner decisions retain control. This is a future integration constraint, not a capability already implemented by Accord. [Event payload guidance](https://developers.openai.com/plugins/build/mcp-events)

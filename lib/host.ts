@@ -1,4 +1,4 @@
-import { AppError, field, Workspace, type Args } from './workspace.ts';
+import { AppError, field, Workspace, type Args, pageRequest, pageResult } from './workspace.ts';
 
 export const hostServices = [
   { id: 'perspective', name: 'Seek a perspective', description: 'Bring a question to a relationship you trust.', keywords: ['perspective', 'mentor', 'review', 'advice', 'decision', 'design', 'guidance'] },
@@ -18,7 +18,7 @@ export class AccordHost {
   async visit(visitId: string, agentId?: string) {
     const v = await this.workspace.one('SELECT * FROM host_visits WHERE id=? AND owner_id=?', visitId, this.workspace.user.id);
     if (!v || (agentId !== undefined && v.agent_id !== agentId)) throw new AppError('This session is not available to this participant.', 403);
-    if (v.agent_id && (agentId !== undefined || v.status !== 'departed')) await this.visitor(v.agent_id);
+    if (v.agent_id && agentId !== undefined) await this.visitor(v.agent_id);
     return v;
   }
   async rooms(agentId: string) {
@@ -28,11 +28,35 @@ export class AccordHost {
     }
     return this.workspace.all('SELECT s.*,m.role FROM spaces s JOIN members m ON m.space_id=s.id WHERE m.user_id=? ORDER BY s.created_at DESC', this.workspace.user.id);
   }
-  async arrivals() {
-    return { visits: await this.workspace.all('SELECT v.*,a.name AS agent_name,s.name AS room_name FROM host_visits v LEFT JOIN agents a ON a.id=v.agent_id LEFT JOIN spaces s ON s.id=v.room_id WHERE v.owner_id=? ORDER BY v.updated_at DESC LIMIT 30', this.workspace.user.id), mode: 'guided', services: hostServices.map(({keywords, ...s}) => s) };
+  async arrivals(cursor?: string) {
+    let after:{at:string;id:string}|null=null;
+    if(cursor){
+      try{const c=JSON.parse(cursor);if(typeof c.at!=='string'||typeof c.id!=='string'||c.id.length>100||!Number.isFinite(Date.parse(c.at)))throw Error();after=c;}catch{throw new AppError('This history reference is invalid. Refresh your sessions.');}
+    }
+    const select=`SELECT v.*,a.name AS agent_name,a.status AS agent_status,s.name AS room_name FROM host_visits v LEFT JOIN agents a ON a.id=v.agent_id LEFT JOIN spaces s ON s.id=v.room_id WHERE v.owner_id=?`;
+    const [page,open]=await Promise.all([
+      this.workspace.all(`${select}${after?' AND (v.updated_at<? OR (v.updated_at=? AND v.id<?))':''} ORDER BY v.updated_at DESC,v.id DESC LIMIT 31`,this.workspace.user.id,...(after?[after.at,after.at,after.id]:[])),
+      this.workspace.all(`${select} AND v.status<>'departed' ORDER BY v.updated_at DESC,v.id DESC LIMIT 5`,this.workspace.user.id)
+    ]);
+    const visits=page.slice(0,30),last=visits.at(-1);
+    return {visits,open_sessions:open,next_cursor:page.length>30&&last?JSON.stringify({at:last.updated_at,id:last.id}):null,mode:'guided',services:hostServices.map(({keywords,...s})=>s)};
+  }
+  async agentSessions(a:Args) {
+    const agentId=field(a,'agent_id',100);await this.workspace.ownedAgent(agentId);
+    const status=field(a,'status',30,true);
+    if(status&&!['open','closed'].includes(status))throw new AppError('Choose open or closed sessions.');
+    const page=pageRequest(a,JSON.stringify(['sessions',this.workspace.user.id,agentId,status]));
+    const rows=await this.workspace.all(`SELECT v.* FROM host_visits v JOIN agents agent ON agent.id=v.agent_id
+      WHERE v.owner_id=? AND v.agent_id=? AND agent.owner_id=? AND agent.status<>'revoked'
+      ${status==='open'?" AND v.status<>'departed'":status==='closed'?" AND v.status='departed'":''}
+      ${page.after?' AND (v.created_at>? OR (v.created_at=? AND v.id>?))':''}
+      ORDER BY v.created_at,v.id LIMIT ?`,this.workspace.user.id,agentId,this.workspace.user.id,...(page.after?[page.after.at,page.after.at,page.after.id]:[]),page.limit+1);
+    const result=pageResult(rows,page);
+    return {sessions:result.items,next_cursor:result.next_cursor,note:'Private sessions for this profile only. Use a returned visit ID to consult or close a session.'};
   }
   async guide(v: Record<string, any>) {
     if (v.status === 'departed') return { visit:v, visitor:{name:'Participant'}, mode:'guided', host:{name:'Accord',service:hostServices.find(s=>s.id===v.service)?.name,message:'This session is closed. The summary records what was reported. Closing a session does not close its relationship or shared space.'},rooms:[],recommended_room_id:null,room:null,steps:[],boundaries:[],receipt:{outcome:v.outcome,recorded_at:v.updated_at,source:'Reported by the participant; not independently verified'} };
+    if(v.agent_id&&(await this.workspace.ownedAgent(v.agent_id,true)).status==='revoked')return {visit:v,visitor:{name:'Disconnected agent'},mode:'guided',restricted:true,host:{name:'Accord',message:'This agent is disconnected. You can still record an outcome and close your private session. Shared context and agent actions are unavailable.'},rooms:[],room:null,steps:[],boundaries:[],receipt:null};
     const agent = await this.visitor(v.agent_id || ''), rooms = await this.rooms(v.agent_id || '');
     const requested = words(v.purpose); for (const word of stopWords) requested.delete(word);
     const ranked = rooms.map(room => {
@@ -51,7 +75,7 @@ export class AccordHost {
     if (v.room_id && rooms.some(r=>r.id===v.room_id)) {
       if (v.agent_id) await this.workspace.agentAccess(v.room_id, v.agent_id);
       const s: Awaited<ReturnType<Workspace['readSpace']>> & Record<string, any> = await this.workspace.readSpace(v.room_id);
-      const active = s.grants.filter(g => g.status === 'active' && g.expires_at > timestamp() && s.agents.some(a => a.id === g.from_agent && a.status !== 'revoked') && s.agents.some(a => a.id === g.to_agent && a.status !== 'revoked'));
+      const active = s.grants.filter(g => g.status === 'active' && g.expires_at > timestamp() && s.agents.some(a => a.id === g.from_agent && a.status !== 'revoked' && s.people.some(p=>p.user_id===a.owner_id)) && s.agents.some(a => a.id === g.to_agent && a.status !== 'revoked' && s.people.some(p=>p.user_id===a.owner_id)));
       const ownIds = v.agent_id ? [v.agent_id] : s.agents.filter(a => a.owner_id === this.workspace.user.id && a.status !== 'revoked').map(a => a.id);
       const outgoing = active.filter(g => ownIds.includes(g.from_agent));
       const inbox = s.tasks.filter(t => ownIds.includes(t.to_agent) && ['queued','working','needs_input'].includes(t.status) && active.some(g => g.id === t.grant_id && g.allow_assign));
@@ -105,7 +129,7 @@ export class AccordHost {
     }
     const v=await this.visit(field(a,'visit_id',100),agentId);
     if(action==='consult_host')return this.guide(v);
-    if(v.status==='departed')throw new AppError('This session is closed. Start a new session.',409);
+    if(v.status==='departed'){if(action==='leave_accord'&&v.outcome===field(a,'outcome',4000))return this.guide(v);throw new AppError('This session is closed. Its recorded outcome cannot be replaced.',409);}
     if(action==='enter_room') {
       const sid=field(a,'space_id',100);
       if(v.agent_id)await this.workspace.agentAccess(sid,v.agent_id);else await this.workspace.member(sid);
@@ -113,7 +137,7 @@ export class AccordHost {
       if(!result.meta.changes)throw new AppError('This session or its access changed. Refresh before opening the space.',409);
     } else if(action==='leave_accord') {
       const outcome=field(a,'outcome',4000);
-      const result=await this.workspace.stmt('UPDATE host_visits SET outcome=?,status=?,updated_at=? WHERE id=? AND owner_id=? AND status<>? AND (agent_id IS NULL OR EXISTS (SELECT 1 FROM agents a WHERE a.id=host_visits.agent_id AND a.owner_id=? AND a.status<>?))',outcome,'departed',timestamp(),v.id,this.workspace.user.id,'departed',this.workspace.user.id,'revoked').run();
+      const result=await this.workspace.stmt(`UPDATE host_visits SET outcome=?,status=?,updated_at=? WHERE id=? AND owner_id=? AND status<>? AND (?='human' OR agent_id IS NULL OR EXISTS (SELECT 1 FROM agents a WHERE a.id=host_visits.agent_id AND a.owner_id=? AND a.status<>?))`,outcome,'departed',timestamp(),v.id,this.workspace.user.id,'departed',channel,this.workspace.user.id,'revoked').run();
       if(!result.meta.changes)throw new AppError('This session changed. Refresh before closing it.',409);
     }else throw new AppError('Unknown guidance action.',404);
     return this.guide(await this.visit(v.id,agentId));

@@ -8,7 +8,7 @@ export async function service() {
   return new Workspace(env.DB, { id: user.userId, email: user.email, name: user.displayName });
 }
 export function errorResponse(error: unknown) {
-  if (error instanceof AppError) return Response.json({ error: error.message }, { status: error.status });
-  console.error('Workspace operation failed', error);
-  return Response.json({ error: 'We could not save that change. Your input is still here; please try again.' }, { status: 503 });
+  if (error instanceof AppError) return Response.json({ error: error.message }, { status: error.status, headers:{'Cache-Control':'no-store'} });
+  console.error('Workspace operation failed', {kind:error instanceof Error?error.name:'UnknownError'});
+  return Response.json({ error: 'We could not save that change. Your input is still here; please try again.' }, { status: 503, headers:{'Cache-Control':'no-store'} });
 }

@@ -15,6 +15,13 @@
       "when": 1790731425088,
       "tag": "0001_petite_cable",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790818302188,
+      "tag": "0002_true_domino",
+      "breakpoints": true
     }
   ]
 }
