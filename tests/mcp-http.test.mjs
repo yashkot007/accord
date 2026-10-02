@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {handleMcpPost,mcpMethodNotAllowed,protocolVersions} from '../lib/mcp-http.ts';
-import {AppError} from '../lib/workspace.ts';
+import {AppError,Workspace} from '../lib/workspace.ts';
 import {pair} from './helpers/workspace.mjs';
 
 function request(message,headers={}){return new Request('https://accord.example/mcp',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream',...headers},body:JSON.stringify(message)});}
@@ -66,5 +66,29 @@ test('HTTP tool exchange preserves identity, duplicate safety, owner decisions a
   await f.b.human('revoke_authority',{grant_id:f.grant.id});
   assert.equal((await invoke(f.a,'send_instruction',{...args,request_id:'after-revoke'})).isError,true);
   const denied=await handleMcpPost(request(call('list_my_agents')),async()=>{throw new AppError('Sign in.',401);});assert.equal(denied.status,401);
+  f.db.sqlite.close();
+});
+
+
+test('retired March protocol negotiates a supported version and rejects March operational requests',async()=>{
+  const service=async()=>{throw Error('No private read');};
+  const initialized=await(await handleMcpPost(request(initialization('2025-03-26')),service)).json();
+  assert.equal(initialized.result.protocolVersion,'2025-11-25');
+  const response=await handleMcpPost(request({jsonrpc:'2.0',id:1,method:'tools/list'},{'MCP-Protocol-Version':'2025-03-26'}),service);assert.equal(response.status,400);
+});
+
+test('a fresh assistant conversation can discover approved guidance without a remembered visit',async()=>{
+  const f=await pair();let sequence=0;
+  const invoke=async(user,name,args={})=>{const response=await handleMcpPost(request(call(name,args,++sequence)),async()=>new Workspace(f.db,user));return(await response.json()).result;};
+  const proposal=await f.a.agentTool('propose_context_change',{agent_id:f.sender.id,grant_id:f.grant.id,title:'Trace consequences',instruction:'Trace side effects first.',reason:'Find the failure boundary.'});
+  await f.b.human('decide_context',{change_id:proposal.id,expected_version:0,decision:'accepted',instruction:'Trace side effects first.'});
+  const init=await(await handleMcpPost(request(initialization('2025-11-25')),async()=>{throw Error('No identity in discovery');})).json();
+  assert.match(init.result.instructions,/list_my_agents/);assert.match(init.result.instructions,/read_context/);assert.match(init.result.instructions,/next_cursor/);assert.match(init.result.instructions,/optional/);
+  const profiles=await invoke(f.b.user,'list_my_agents');const selected=profiles.structuredContent.agents.find(a=>a.id===f.recipient.id);assert.ok(selected);
+  const accepted=await invoke(f.b.user,'read_context',{agent_id:selected.id,limit:1});assert.equal(accepted.structuredContent.context.length,1);assert.equal(accepted.structuredContent.context[0].id,proposal.id);assert.equal(accepted.structuredContent.context[0].version,1);assert.equal(accepted.structuredContent.next_cursor,null);
+  assert.equal(f.db.sqlite.prepare('SELECT count(*) AS n FROM host_visits').get().n,0);
+  await f.b.human('decide_context',{change_id:proposal.id,expected_version:1,decision:'pending'});
+  const refreshed=await invoke(f.b.user,'read_context',{agent_id:selected.id});assert.equal(refreshed.structuredContent.context.length,0);
+  assert.equal((await invoke(f.outsider.user,'read_context',{agent_id:selected.id})).isError,true);
   f.db.sqlite.close();
 });

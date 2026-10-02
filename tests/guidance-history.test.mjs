@@ -77,7 +77,10 @@ for(const target of ['history','activity'])test(`failed ${target} insertion roll
 
 test('additive history migration preserves only surviving legacy decisions without inventing actor or source state',async()=>{
   for(const status of ['accepted','declined','pending']){
-    const db=database({through:'0004_skinny_colossus.sql'}),f=await pair(db),{c}=await proposed(f,true);
+    const db=database({through:'0004_skinny_colossus.sql'});
+    // Independent grant-receipt fields are required by the current setup service.
+    db.sqlite.exec(readFileSync(new URL('../drizzle/0006_melted_exodus.sql',import.meta.url),'utf8'));
+    const f=await pair(db),{c}=await proposed(f,true);
     db.sqlite.prepare('UPDATE changes SET status=?,adopted=?,version=4 WHERE id=?').run(status,status==='accepted'?'Known older wording':null,c.id);
     db.sqlite.exec(readFileSync(new URL('../drizzle/0005_calm_shadow_king.sql',import.meta.url),'utf8'));
     let r=await f.b.readGuidance({change_id:c.id});assert.equal(r.history.length,1);assert.equal(r.history[0].version,4);assert.equal(r.history[0].channel,'legacy');assert.equal(r.history[0].actor_id,null);assert.equal(r.history[0].source_status,null);assert.equal(count(db,'context_decisions'),0);

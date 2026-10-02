@@ -1,9 +1,10 @@
 import { readBoundedText } from './request-body.ts';
 import { AccordHost } from './host.ts';
 import { agentTools } from './agent-tools.ts';
+import { agentInstructions } from './agent-instructions.ts';
 import { AppError, type Workspace } from './workspace.ts';
 
-export const protocolVersions = ['2025-11-25', '2025-06-18', '2025-03-26'];
+export const protocolVersions = ['2025-11-25', '2025-06-18'];
 const record = (value:unknown):value is Record<string,any> => !!value && typeof value==='object' && !Array.isArray(value);
 const requestId = (value:unknown):value is string|number => typeof value==='string'||Number.isSafeInteger(value);
 const noStore = {'Cache-Control':'no-store'};
@@ -48,7 +49,7 @@ export async function handleMcpPost(request:Request,resolveWorkspace:()=>Promise
     const params=message.params;
     if(message.method==='initialize'){
       if(!record(params)||typeof params.protocolVersion!=='string'||!params.protocolVersion||!record(params.capabilities)||!record(params.clientInfo)||typeof params.clientInfo.name!=='string'||!params.clientInfo.name||typeof params.clientInfo.version!=='string'||!params.clientInfo.version)return failure(id,-32602,'Initialization requires protocolVersion, capabilities, and clientInfo with name and version.');
-      return reply(id,{protocolVersion:protocolVersions.includes(params.protocolVersion)?params.protocolVersion:protocolVersions[0],capabilities:{tools:{listChanged:false}},serverInfo:{name:'accord',title:'Accord',version:'0.7.0'}});
+      return reply(id,{protocolVersion:protocolVersions.includes(params.protocolVersion)?params.protocolVersion:protocolVersions[0],capabilities:{tools:{listChanged:false}},serverInfo:{name:'accord',title:'Accord',version:'0.8.0'},instructions:agentInstructions});
     }
     if(message.method==='ping')return reply(id,{});
     if(message.method==='tools/list'){

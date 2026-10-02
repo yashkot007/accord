@@ -177,12 +177,19 @@ export class Workspace {
     }
     if (action === 'disconnect_agent') {
       const aid = field(a, 'agent_id', 100); await this.ownedAgent(aid, true);
-      await this.stmt('UPDATE agents SET status=? WHERE id=?', 'revoked', aid).run(); return { disconnected: true };
+      const saved=await this.stmt('UPDATE agents SET status=? WHERE id=? AND owner_id=?', 'revoked', aid,this.user.id).run();
+      if(!saved.meta.changes)throw new AppError('This agent is not available to your account.',403);
+      return { disconnected: true };
     }
     if (action === 'attach_agent') {
       const sid = field(a, 'space_id', 100), aid = field(a, 'agent_id', 100);
       await this.member(sid); await this.ownedAgent(aid);
-      await this.db.batch([this.stmt('INSERT OR IGNORE INTO space_agents (space_id,agent_id) VALUES (?,?)', sid, aid), this.event(sid, 'agent', 'Added an agent to the space')]); return { attached: true };
+      const saved=await this.db.batch([
+        this.stmt(`INSERT OR IGNORE INTO space_agents (space_id,agent_id) SELECT ?,a.id FROM agents a JOIN members m ON m.user_id=a.owner_id AND m.space_id=? WHERE a.id=? AND a.owner_id=? AND a.status<>'revoked'`,sid,sid,aid,this.user.id),
+        this.changedEvent(sid, 'agent', 'Added an agent to the space')
+      ]);
+      if(!saved[0].meta.changes)await this.agentAccess(sid,aid);
+      return { attached: true };
     }
     if (action === 'add_source') {
       const sid = field(a, 'space_id', 100); await this.member(sid);
@@ -192,21 +199,22 @@ export class Workspace {
       if(!saved[0].meta.changes)throw new AppError('Your access to this space changed.',403);
       return { id: source };
     }
-    if (action === 'grant_authority') {
-      const sid = field(a, 'space_id', 100), from = field(a, 'from_agent', 100), to = field(a, 'to_agent', 100);
-      const space = await this.member(sid); await this.ownedAgent(to); await this.attached(sid, from); await this.attached(sid, to);
-      if (from === to) throw new AppError('Choose two different agents.');
-      if (typeof a.allow_assign !== 'boolean' || typeof a.allow_context !== 'boolean' || (!a.allow_assign && !a.allow_context)) throw new AppError('Choose at least one permission.');
-      const expiry = field(a, 'expires_at', 40), stamp = Date.parse(expiry);
-      if (!Number.isFinite(stamp) || stamp <= Date.now() || stamp > Date.now() + 366 * 86400000) throw new AppError('Choose an expiry within the next year.');
-      const gid = id();
-      await this.db.batch([this.stmt('UPDATE grants SET status=? WHERE space_id=? AND from_agent=? AND to_agent=? AND status=?', 'revoked', sid, from, to, 'active'), this.stmt('INSERT INTO grants (id,space_id,from_agent,to_agent,scope,allow_assign,allow_context,status,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)', gid, sid, from, to, space.topic, +a.allow_assign, +a.allow_context, 'active', new Date(stamp).toISOString(), now()), this.event(sid, 'authority', 'Granted scoped authority to an agent')]); return { id: gid };
-    }
+    if (action === 'grant_authority') return this.grantAuthority(a);
     if (action === 'revoke_authority') {
       const gid = field(a, 'grant_id', 100), grant = await this.one('SELECT * FROM grants WHERE id=?', gid);
       if (!grant) throw new AppError('Connection not found.', 404);
       await this.member(grant.space_id); await this.ownedAgent(grant.to_agent, true);
-      await this.db.batch([this.stmt('UPDATE grants SET status=? WHERE id=?', 'revoked', gid), this.event(grant.space_id, 'authority', 'Revoked an authority connection')]); return { revoked: true };
+      const saved=await this.db.batch([
+        this.stmt(`UPDATE grants SET status='revoked' WHERE id=? AND status<>'revoked'
+          AND EXISTS (SELECT 1 FROM agents a JOIN members m ON m.user_id=a.owner_id AND m.space_id=grants.space_id WHERE a.id=grants.to_agent AND a.owner_id=?)`,gid,this.user.id),
+        this.changedEvent(grant.space_id, 'authority', 'Revoked an authority connection')
+      ]);
+      if(!saved[0].meta.changes){
+        const current=await this.one(`SELECT g.status FROM grants g JOIN agents a ON a.id=g.to_agent JOIN members m ON m.space_id=g.space_id AND m.user_id=a.owner_id WHERE g.id=? AND a.owner_id=?`,gid,this.user.id);
+        if(!current)throw new AppError('This authority record is not available to your account.',403);
+        if(current.status!=='revoked')throw new AppError('This connection changed. Review its current authority and try again.',409);
+      }
+      return { revoked: true };
     }
     if (action === 'decide_context') return this.decideContext(a);
     if (action === 'invite_member') {
@@ -225,6 +233,52 @@ export class Workspace {
     }
     if (['send_instruction', 'report_progress', 'propose_context_change'].includes(action)) return this.exchange(action, a, 'human');
     throw new AppError('Unknown action.', 404);
+  }
+  async grantAuthority(a:Args) {
+    const sid=field(a,'space_id',100),from=field(a,'from_agent',100),to=field(a,'to_agent',100);
+    if(from===to)throw new AppError('Choose two different agents.');
+    if(typeof a.allow_assign!=='boolean'||typeof a.allow_context!=='boolean'||(!a.allow_assign&&!a.allow_context))throw new AppError('Choose at least one permission.');
+    const stamp=Date.parse(field(a,'expires_at',40));
+    if(!Number.isFinite(stamp))throw new AppError('Choose a valid expiry.');
+    const expiry=new Date(stamp).toISOString(),key=field(a,'request_id',100,true)||null;
+    const fingerprint=key?await hash(JSON.stringify({space_id:sid,from_agent:from,to_agent:to,allow_assign:a.allow_assign,allow_context:a.allow_context,expires_at:expiry})):null;
+    const receipt=(g:Row,replayed:boolean)=>({id:g.id,recorded_at:g.created_at,replayed});
+    const retry=async()=>{
+      if(!key)return null;
+      const saved=await this.one('SELECT * FROM grants WHERE issued_by=? AND request_key=?',this.user.id,key);
+      if(!saved)return null;
+      if(saved.request_hash!==fingerprint)throw new AppError('This request reference was already used for different permissions. Start a new submission.',409);
+      // Recover the historical receipt, never restore authority. Current read access
+      // and recipient ownership remain required even after expiry or disconnection.
+      const visible=await this.one(`SELECT g.id,g.created_at FROM grants g JOIN agents recipient ON recipient.id=g.to_agent JOIN members m ON m.space_id=g.space_id AND m.user_id=recipient.owner_id WHERE g.id=? AND recipient.owner_id=?`,saved.id,this.user.id);
+      if(!visible)throw new AppError('This authority record is not available to your account.',403);
+      return receipt(visible,true);
+    };
+    const previous=await retry();if(previous)return previous;
+    await this.member(sid);await this.ownedAgent(to);await this.attached(sid,from);await this.attached(sid,to);
+    if(stamp<=Date.now()||stamp>Date.now()+366*86400000)throw new AppError('Choose an expiry within the next year.');
+    const gid=id(),date=now();
+    let saved;
+    try{
+      saved=await this.db.batch([
+        this.stmt(`INSERT OR IGNORE INTO grants (id,space_id,from_agent,to_agent,scope,allow_assign,allow_context,status,expires_at,issued_by,request_key,request_hash,created_at)
+          SELECT ?,s.id,sender.id,recipient.id,s.topic,?,?,'active',?,?,?,?,?
+          FROM spaces s JOIN members m ON m.space_id=s.id AND m.user_id=?
+          JOIN agents recipient ON recipient.id=? AND recipient.owner_id=m.user_id AND recipient.status<>'revoked'
+          JOIN space_agents ra ON ra.space_id=s.id AND ra.agent_id=recipient.id
+          JOIN agents sender ON sender.id=? AND sender.status<>'revoked'
+          JOIN space_agents sa ON sa.space_id=s.id AND sa.agent_id=sender.id
+          JOIN members sm ON sm.space_id=s.id AND sm.user_id=sender.owner_id
+          WHERE s.id=? AND julianday(?)>julianday('now')
+          AND (? IS NULL OR NOT EXISTS (SELECT 1 FROM grants prior WHERE prior.issued_by=? AND prior.request_key=?))`,
+          gid,+a.allow_assign,+a.allow_context,expiry,this.user.id,key,fingerprint,date,this.user.id,to,from,sid,expiry,key,this.user.id,key),
+        this.changedEvent(sid,'authority','Granted scoped authority to an agent'),
+        // Replacing earlier grants is conditional on this insertion succeeding.
+        this.stmt(`UPDATE grants SET status='revoked' WHERE space_id=? AND from_agent=? AND to_agent=? AND status='active' AND id<>? AND EXISTS (SELECT 1 FROM grants created WHERE created.id=?)`,sid,from,to,gid,gid)
+      ]);
+    }catch(error){const recovered=await retry();if(recovered)return recovered;throw error;}
+    if(!saved[0].meta.changes){const recovered=await retry();if(recovered)return recovered;throw new AppError('Access or permissions changed before saving. Review this connection and try again.',409);}
+    return receipt({id:gid,created_at:date},false);
   }
   async exchange(action: string, a: Args, channel: 'human' | 'agent'): Promise<any> {
     if (action === 'send_instruction' || action === 'propose_context_change') {

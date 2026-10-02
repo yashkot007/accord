@@ -43,6 +43,13 @@
       "when": 1790823956115,
       "tag": "0005_calm_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790825710524,
+      "tag": "0006_melted_exodus",
+      "breakpoints": true
     }
   ]
 }
