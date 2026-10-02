@@ -23,7 +23,7 @@ The reviewed documentation does not establish native Space participation by Clau
 
 ## Prototype limitations
 
-Accord already records directional grants, expiry, revocation, and recipient context decisions. It authenticates people; profiles are not independently credentialed agents. External assistants must invoke its tools: Accord does not wake them or alter another provider's private memory. Cross-provider delivery, later use of accepted guidance, and improved outcomes remain unverified. Revocation blocks new authorized exchanges; it cannot recall information already delivered or silently erase owner-adopted guidance.
+Accord already records directional grants, expiry, revocation, and recipient context decisions. It authenticates people; profiles are not independently credentialed agents. External assistants must invoke its tools: Accord does not wake them or alter another provider's private memory. On October 1, a [live Codex test](interoperability.md#production-live-mcp-exchange--2026-10-01) verified a single owner's exchange and prompted fresh-assistant retrieval/application of accepted guidance. Cross-provider delivery, independent-owner use, voluntary reuse and improved outcomes remain unverified. Revocation blocks new authorized exchanges; it cannot recall information already delivered or silently erase owner-adopted guidance.
 
 ## Recommendation
 

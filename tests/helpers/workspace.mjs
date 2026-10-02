@@ -5,6 +5,11 @@ import {Workspace} from '../../lib/workspace.ts';
 export function database({through}={}) {
   const sqlite = new DatabaseSync(':memory:');
   for (const migration of readdirSync(new URL('../../drizzle/', import.meta.url)).filter(f => f.endsWith('.sql')&&(!through||f<=through)).sort()) sqlite.exec(readFileSync(new URL('../../drizzle/' + migration, import.meta.url), 'utf8'));
+  return wrapDatabase(sqlite);
+}
+
+/** Bind a restored connection without replaying schema migrations. */
+export function wrapDatabase(sqlite) {
   function statement(sql, values = []) {
     return {
       bind(...args) { return statement(sql, args); },

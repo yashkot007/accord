@@ -1,5 +1,11 @@
 # Accord product quality plan
 
+## Current priority, changed by the owner on 2026-10-01
+
+The active goal is a functional POC that the owner can test and approve. Prove the core relationship loop and fix failures in that loop first. After the owner approves the POC, decide its delivery format (app, connector, extension, web service or a combination). Interface direction follows that decision. The research and broader production requirements below remain recorded background, not reasons to delay a functional POC with more design or marketplace work.
+
+Use the [functional POC acceptance path](interoperability.md#functional-poc-acceptance-path) as the next execution gate. A real authenticated Codex plugin exchange is now verified for one owner and two synthetic profiles; see the [live MCP evidence](interoperability.md#production-live-mcp-exchange--2026-10-01). Two-person validation and the owner's POC testing/approval remain outstanding. Do not call the POC complete based only on local tests, publication or the single-owner exchange.
+
 Reviewed 2026-09-30. Status: proposed requirements and evidence gates, not a completion report. Public research informs the plan; it does not establish demand, retention, security certification, or production readiness for Accord.
 
 The goal is a dependable service people voluntarily reuse with their personal agents. It includes identity, permissions, exchanges, recovery, operations, support, and usable interfaces. Mentorship, onboarding, consulting, coaching, teaching, and other relationships should share the same foundations. A polished webpage alone does not meet this goal.
@@ -108,7 +114,7 @@ Synthetic browser verification covered a competing decision while a draft was op
 
 The 77-test suite adds lost-response and competing-grant recovery, changed-content conflicts, commit-time membership/ownership/profile/attachment checks, rollback of issuance and replacement, and migration preservation. Retrying an earlier grant cannot restore revoked authority or revoke a newer grant. Repeating attachment or revocation produces no duplicate activity. This covers these operations; create-space/profile/source retries and relationship-wide stale-form protection remain separate gaps.
 
-The public connection manifest and MCP initialization now explain how a fresh conversation can select its intended owned profile and retrieve current approved guidance with pagination, scope and provenance. Local handler tests verify the path across fresh service instances and owner reconsideration. Real assistant execution, supported-provider OAuth and voluntary later reuse remain unverified. This work makes a real pilot more testable; it is not evidence that the pilot's product hypothesis has passed.
+The public connection manifest and MCP initialization now explain how a fresh conversation can select its intended owned profile and retrieve current approved guidance with pagination, scope and provenance. Local handler tests verify the path across fresh service instances and owner reconsideration. At this September 30 checkpoint, real assistant execution, supported-provider authentication and voluntary later reuse were unverified. The October 1 live MCP evidence now records one owner's Codex exchange and prompted fresh-assistant retrieval/application; two-owner and voluntary later reuse remain open. This does not establish that the product hypothesis has passed.
 
 ## First-use recovery evidence, 2026-09-30
 
@@ -127,3 +133,12 @@ Synthetic local browser verification covered a participant leaving during an ope
 Migration 0008 adds an immutable receipt table and constant-default membership/admission fields without fabricating historical departures. Shared records and existing memberships remain. Account deletion, retention duration, backup restoration, production operations, full accessibility/performance evidence and real provider use remain open.
 
 The next evidence gate is one real authenticated client retrieving reviewed guidance in a fresh later conversation against a named deployed version, followed by a second provider and voluntary reuse. Local reliability checks cannot substitute for that evidence.
+
+
+## Recovery and accessibility evidence, 2026-10-01
+
+The source revision containing this section adds three isolated recovery cases to the existing 115-test suite. All 16 application tables are populated and compared along with schema objects after independent restoration; integrity/foreign-key checks and subsequent application authorization, history, redaction and retry behavior are exercised. An older-schema recovery handles an injected local migration failure before applying only the remaining migration. The last case demonstrates that a snapshot can restore permissions revoked after capture. The [backend recovery procedure](backend-design.md#operational-recovery-rehearsal-2026-10-01) therefore requires isolation and reconciliation before real cutover. No production database was backed up or restored.
+
+The browser review used synthetic local records. Keyboard resumption now moves focus to the session result, workspace navigation moves focus to its heading, and generic dialogs restore the initiating control or the new page heading. Field explanations and dialog descriptions are associated with their controls. At a measured 320 CSS-pixel viewport, an 80-character unbroken space name saved successfully, focused its new heading and caused no horizontal page overflow. The invitation dialog fit at that width, Escape restored focus to Invite person, and its permission help text measured 6.25:1 against its white background. Muted text was darkened and user-written headings can wrap. This is targeted keyboard, contrast and narrow-layout evidence; actual browser text zoom, complete screen-reader journeys and a whole-product accessibility audit remain open.
+
+The next product evidence remains a real authenticated assistant exchange followed by useful later retrieval and voluntary reuse. Local recovery checks and deployment do not establish that outcome, production operational readiness, marketplace approval, or retention.

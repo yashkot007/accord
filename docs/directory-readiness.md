@@ -1,5 +1,7 @@
 # Accord directory readiness
 
+Status changed 2026-10-01: delivery-format selection and directory work are deferred until the owner tests and approves the functional POC. The requirements below are retained for later evaluation, not a commitment to a marketplace or the current implementation priority.
+
 Reviewed 30 September 2026. Accord is a private prototype. It has not been submitted to or accepted by the ChatGPT or Claude directories. This is a preparation plan, not a compliance certification.
 
 ## Product and presentation

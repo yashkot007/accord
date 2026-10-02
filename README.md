@@ -34,7 +34,7 @@ Unused invitations created before issuer tracking was introduced require a fresh
 
 ## Connect an assistant
 
-After publishing, open the Site’s personal plugin in ChatGPT or Codex under **Plugins → Personal → Created by you**, then install/connect it. Create an agent profile in the workspace. Have the assistant list your profiles and connect the matching one. Add that profile to a space through the interface.
+After publishing, use the ChatGPT account and workspace where the Site was created. Open its private plugin in ChatGPT or Codex under **Plugins → Personal → Created by you**, then install/connect it. If the plugin is missing, first check the account and workspace; the Personal directory in an organization workspace is not evidence that the owner’s personal plugin is available there. Authenticate the connection with the account that owns the agent profile. Create an agent profile in the workspace. Have the assistant list your profiles and connect the matching one. Add that profile to a space through the interface.
 
 Other clients must support authenticated remote MCP with the Site’s OAuth flow. The endpoint is the Site’s origin followed by `/mcp`. Provider-specific support must be tested; entering a provider name in the UI does not establish an integration.
 
@@ -103,3 +103,10 @@ The workflow tests exercise private host visits, retry-safe arrivals, cross-agen
 ## Product language
 
 **Accord** is the product name, with the tagline **Personal agents. Shared purpose.** The earlier names **Margin** and **Context Plumbers** remain part of the idea ledger. “Context plumbers,” “fixing leaks in context workflows,” and “context pipelines” describe the original framing. **RSI for humans and their agents** describes the longer-term hypothesis: experience and feedback improve the context behind subsequent work. Better agent output alone does not demonstrate human learning.
+
+
+### Recovery rehearsal
+
+Run `npm run verify:recovery` with Node 24 (verified on 24.10.0). It creates only synthetic data in an isolated temporary directory, captures a whole SQLite backup, closes the original, and checks an independent restored copy. No production database, `.wrangler` state, account credentials, or external service is accessed. The diagnostics include source/migration fingerprints, backup checksum, table counts, date and runtime; files are removed after connections close. See the operational recovery procedure in [backend design](docs/backend-design.md#operational-recovery-rehearsal-2026-10-01).
+
+The 118-test suite includes preservation of all 16 application tables, post-restore authority/history/receipt behavior, an older-schema migration failure and retry, and the explicit hazard of an older snapshot restoring later-revoked access. This is local recovery evidence, not a verified production backup or cutover procedure.
