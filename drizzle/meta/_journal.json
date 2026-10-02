@@ -64,6 +64,20 @@
       "when": 1790827792257,
       "tag": "0008_complex_spencer_smythe",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1790887879274,
+      "tag": "0009_greedy_sinister_six",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1790888446267,
+      "tag": "0010_jittery_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

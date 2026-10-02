@@ -79,13 +79,17 @@ async function fixture(){
   await host.perform('enter_room',{visit_id:closed.visit.id,space_id:f.space.id});
   await host.perform('leave_accord',{visit_id:closed.visit.id,outcome:'Private reported outcome.'});
   const open=await host.perform('arrive_at_accord',{purpose:'Private open purpose.',service:'continuity',agent_id:privateAgent.id,request_id:'open-session'});
+  // Credential key material is external to the database; these are synthetic opaque fixtures only.
+  f.db.sqlite.prepare("INSERT INTO provider_connections (owner_id,provider,connection_id,credential,status,updated_at) VALUES (?,'granola','synthetic-connection','synthetic-encrypted-credential','connected',?)").run(f.b.user.id,new Date().toISOString());
+  f.db.sqlite.prepare("INSERT INTO provider_oauth_flows (state_hash,owner_id,provider,details,status,created_at,expires_at) VALUES ('synthetic-state',?,'granola',NULL,'completed',?,?)").run(f.b.user.id,new Date().toISOString(),new Date().toISOString());
+  f.db.sqlite.prepare("INSERT INTO provider_import_drafts (id,owner_id,connection_id,content,created_at,expires_at) VALUES ('synthetic-draft',?,'synthetic-connection','synthetic-encrypted-draft',?,?)").run(f.b.user.id,new Date().toISOString(),new Date().toISOString());
   return {...f,source,sourceArgs,task,reportArgs,report,change,decisionArgs,decision,oldInvite,removalArgs,removal,grantArgs,replacement:grant,privateAgent,closed,open};
 }
 
 test('whole-database recovery preserves every table, authority, history, private sessions and retry receipts',async t=>{
   const f=await fixture();
   const before=snapshot(f.db.sqlite);
-  assert.equal(Object.keys(before.rows).length,16);
+  assert.equal(Object.keys(before.rows).length,19);
   assert.ok(Object.values(before.rows).every(rows=>rows.length>0),'Every application table has representative records');
   const db=await restored(t,f.db);
   const a=new Workspace(db,f.a.user),b=new Workspace(db,f.b.user),outsider=new Workspace(db,f.outsider.user);

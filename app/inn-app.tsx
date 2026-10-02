@@ -35,6 +35,7 @@ export default function InnApp({initialUser}:{initialUser:Row}){
   },[]);
   async function moreHistory(){if(!historyCursor||busy)return;setBusy(true);try{const h=await request('/api/host?cursor='+encodeURIComponent(historyCursor));setVisits(previous=>[...previous,...h.visits.filter((v:Row)=>!previous.some(p=>p.id===v.id))]);setHistoryCursor(h.next_cursor);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get('view')==='connections')setManage({page:'connections'});},[]);
   useEffect(()=>{if(drawer==='visits'||drawer==='rooms'||drawer==='agents')void refresh();},[drawer,refresh]);
   useEffect(()=>{if(drawer||createOpen||departOpen)dialogRef.current?.showModal();},[drawer,createOpen,departOpen]);
   useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(''),3500);return()=>clearTimeout(t);},[notice]);

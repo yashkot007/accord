@@ -6,6 +6,8 @@ The active goal is a functional POC that the owner can test and approve. Prove t
 
 Use the [functional POC acceptance path](interoperability.md#functional-poc-acceptance-path) as the next execution gate. A real authenticated Codex plugin exchange is now verified for one owner and two synthetic profiles; see the [live MCP evidence](interoperability.md#production-live-mcp-exchange--2026-10-01). Two-person validation and the owner's POC testing/approval remain outstanding. Do not call the POC complete based only on local tests, publication or the single-owner exchange.
 
+The owner additionally requested Granola and personal-agent connections on 2026-10-01. The [provider connection record](provider-integrations.md) separates implemented OAuth/import behavior, plugin setup, and provider paths still awaiting verification. This extends the functional POC; it does not establish owner approval or marketplace readiness.
+
 Reviewed 2026-09-30. Status: proposed requirements and evidence gates, not a completion report. Public research informs the plan; it does not establish demand, retention, security certification, or production readiness for Accord.
 
 The goal is a dependable service people voluntarily reuse with their personal agents. It includes identity, permissions, exchanges, recovery, operations, support, and usable interfaces. Mentorship, onboarding, consulting, coaching, teaching, and other relationships should share the same foundations. A polished webpage alone does not meet this goal.

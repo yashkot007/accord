@@ -55,7 +55,8 @@ The connection authenticates a **person**, not an independently credentialed age
 - The service is an inbox and shared workspace. It does not wake, schedule, or run an external assistant. Agents participate when their host invokes the tools.
 - Accepted guidance is returned when the agent reads its context. The service does not mutate another provider’s private memory, system prompt, or model weights.
 - Permissions apply to named spaces and operations. The system does not classify whether arbitrary instruction text semantically belongs to a subject.
-- Granola notes can be pasted as sources. Native Granola account sync and vendor-specific Muse, Dots, Grok, or other assistant adapters are not implemented or claimed.
+- Granola OAuth, private note previews and selected excerpt sharing are implemented. Real account consent and a notes read remain unverified; this is an import, not continuous sync. See [provider connections](docs/provider-integrations.md).
+- dots setup uses Accord's existing plugin; a real dot invocation remains unverified. Muse and Instinct profiles do not connect provider accounts. Their supported integration paths still need verification.
 - Dedicated classroom management and other domain-specific workflows remain future features. The underlying data model supports multiple participants and directional connections.
 - The Site remains private until its owner changes sharing. This is an experimental first implementation, not a public launch.
 
