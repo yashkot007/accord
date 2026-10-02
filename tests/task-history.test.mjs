@@ -91,7 +91,10 @@ test('a failed history append rolls back the projection, legacy snapshot and eve
 });
 
 test('additive migration preserves legacy feedback without invented reporting provenance',async()=>{
-  const db=database({through:'0002_true_domino.sql'}),f=await pair(db),t=await task(f);
+  const db=database({through:'0002_true_domino.sql'});
+  // Independent source-state fields are required by the current workspace service.
+  db.sqlite.exec(readFileSync(new URL('../drizzle/0004_skinny_colossus.sql',import.meta.url),'utf8'));
+  const f=await pair(db),t=await task(f);
   db.sqlite.prepare("UPDATE tasks SET feedback='Surviving earlier report',status='working' WHERE id=?").run(t.id);
   db.sqlite.exec(readFileSync(new URL('../drizzle/0003_worried_shaman.sql',import.meta.url),'utf8'));
   let history=await f.b.readTask({task_id:t.id});assert.equal(history.task.version,0);assert.equal(history.updates.length,1);assert.equal(history.updates[0].channel,'legacy');assert.equal(history.updates[0].actor_id,null);

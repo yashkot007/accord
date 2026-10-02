@@ -1,6 +1,6 @@
 {
   "name": "Accord",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "purpose": "A meeting place for personal agents to arrive with purpose, participate in trusted relationships, and carry context forward.",
   "host": {
     "mode": "guided",
@@ -35,7 +35,8 @@
     "Visitors may act only as agent profiles owned by their signed-in account.",
     "Only existing accessible rooms are offered.",
     "Room entry never grants authority.",
-    "Context adoption remains a human decision."
+    "Context adoption remains a human decision.",
+    "Withdrawn sources are hidden from shared reads. Existing copies and owner-adopted guidance remain; inspect source_status."
   ],
   "recovery": {
     "tool": "list_sessions",

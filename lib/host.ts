@@ -80,18 +80,19 @@ export class AccordHost {
       const outgoing = active.filter(g => ownIds.includes(g.from_agent));
       const inbox = s.tasks.filter(t => ownIds.includes(t.to_agent) && ['queued','working','needs_input'].includes(t.status) && active.some(g => g.id === t.grant_id && g.allow_assign));
       const reviews = s.changes.filter(c => ownIds.includes(c.to_agent) && c.status === 'pending');
+      const sources = s.sources.filter(s=>s.status==='active');
       const context = s.changes.filter(c => ownIds.includes(c.to_agent) && c.status === 'accepted');
       room = {
         id:s.id, name:s.name, purpose:s.purpose, topic:s.topic,
-        sources:s.sources.map(x => ({id:x.id,title:x.title,kind:x.kind})),
+        sources:sources.map(x => ({id:x.id,title:x.title,kind:x.kind})),
         agents:s.agents.map(a => ({id:a.id,name:a.name,status:a.status})),
         permissions:{read_shared_context:true,assign_work:outgoing.some(g => g.allow_assign),propose_context:outgoing.some(g => g.allow_context),accept_context:false},
         grants:outgoing.map(g => ({id:g.id,to_agent:g.to_agent,scope:g.scope,assign:!!g.allow_assign,propose:!!g.allow_context,expires_at:g.expires_at})),
         inbox:inbox.map(t=>({id:t.id,title:t.title,status:t.status})),
         reviews:reviews.map(c=>({id:c.id,title:c.title})),
-        context:context.map(c=>({id:c.id,title:c.title,instruction:c.adopted,scope:c.scope,reason:c.reason})),
+        context:context.map(c=>({id:c.id,title:c.title,instruction:c.adopted,scope:c.scope,reason:c.reason,source_id:c.source_id,source_status:c.source_status,source_version:c.source_version})),
       };
-      message = `You’re in “${s.name}”. ${s.sources.length ? `${s.sources.length} shared ${s.sources.length === 1 ? 'source is' : 'sources are'} available for this session.` : 'Start by sharing the background this relationship needs.'} ${inbox.length ? `${inbox.length} ${inbox.length === 1 ? 'instruction awaits' : 'instructions await'} this participant.` : 'No open instructions are assigned to this participant.'}`;
+      message = `You’re in “${s.name}”. ${sources.length ? `${sources.length} shared ${sources.length === 1 ? 'source is' : 'sources are'} available for this session.` : 'Start by sharing the background this relationship needs.'} ${inbox.length ? `${inbox.length} ${inbox.length === 1 ? 'instruction awaits' : 'instructions await'} this participant.` : 'No open instructions are assigned to this participant.'}`;
     }
     const preparation: Record<string, {title:string;detail:string}> = {
       perspective:{title:'Frame the decision',detail:'Use the shared background to name the decision, your current assumption, and the perspective you are seeking.'},

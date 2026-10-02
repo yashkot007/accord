@@ -43,7 +43,7 @@ test('two people exchange work and review context with enforced ownership, membe
   const change = await a.agentTool('propose_context_change', proposal);
   assert.equal((await b.agentTool('read_context', { agent_id: ba.id })).context.length, 0);
   await assert.rejects(a.human('decide_context', { change_id: change.id, expected_version: 0, decision: 'accepted', instruction: 'Silent adoption' }));
-  await b.human('decide_context', { change_id: change.id, expected_version: 0, decision: 'accepted', instruction: 'My adaptation: trace external side effects first.' });
+  await b.human('decide_context', { change_id: change.id, expected_version: 0, expected_source_version:0, decision: 'accepted', instruction: 'My adaptation: trace external side effects first.' });
   assert.equal((await b.agentTool('read_context', { agent_id: ba.id })).context[0].instruction, 'My adaptation: trace external side effects first.');
   await b.human('decide_context', { change_id: change.id, expected_version: 1, decision: 'pending' });
   assert.equal((await b.agentTool('read_context', { agent_id: ba.id })).context.length, 0);

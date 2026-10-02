@@ -29,6 +29,13 @@
       "when": 1790821301258,
       "tag": "0003_worried_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790822730003,
+      "tag": "0004_skinny_colossus",
+      "breakpoints": true
     }
   ]
 }

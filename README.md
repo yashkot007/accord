@@ -24,7 +24,8 @@ The public `/.well-known/accord.json` describes the agent entrance without expos
 - Receiving owners grant an agent permission to assign work and/or propose context changes within a space. Grants expire and can be revoked.
 - Authenticated remote MCP tools for agents to participate using the signed-in owner’s account.
 - A separate, clearly labeled illustrative space. Example interactions are temporary and never affect real agents or stored user data.
-- Copy and Markdown export of accepted context, preserving scope, source, and reasoning.
+- Copy and Markdown export of accepted context, preserving scope, source availability, and reasoning.
+- Reversible source withdrawal with version checks, shared-read redaction, explicit management previews, and source-version checks before guidance adoption. Withdrawal retains stored content and cannot recall existing copies or accepted guidance.
 
 ## Connect an assistant
 
