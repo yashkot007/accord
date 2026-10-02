@@ -172,7 +172,8 @@ test('a stale approval cannot replace a newer receiving-owner decision',async()=
   const {db,a,b,grant}=await pair();
   const c=await a.human('propose_context_change',{grant_id:grant.id,title:'Guidance',instruction:'Original suggestion',reason:'Test'});
   await assert.rejects(b.human('decide_context',{change_id:c.id,decision:'accepted',instruction:'Missing review version'}),{status:409});
-  assert.deepEqual(await b.human('decide_context',{change_id:c.id,expected_version:0,decision:'accepted',instruction:'Owner adaptation'}),{status:'accepted',version:1});
+  const receipt=await b.human('decide_context',{change_id:c.id,expected_version:0,decision:'accepted',instruction:'Owner adaptation'});
+  assert.equal(receipt.status,'accepted');assert.equal(receipt.version,1);assert.ok(receipt.decision_id);
   await assert.rejects(b.human('decide_context',{change_id:c.id,expected_version:0,decision:'declined'}),{status:409});
   let saved=db.sqlite.prepare('SELECT * FROM changes WHERE id=?').get(c.id);
   assert.equal(saved.adopted,'Owner adaptation');assert.equal(saved.version,1);

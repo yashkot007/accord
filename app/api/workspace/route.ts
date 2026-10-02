@@ -4,8 +4,8 @@ import { AppError } from '@/lib/workspace';
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
-    const s = await service(), params=new URL(request.url).searchParams, sid=params.get('space'), task=params.get('task'),source=params.get('source');
-    return Response.json(source ? await s.readSource(source) : task ? await s.readTask({task_id:task,cursor:params.get('cursor')||undefined,limit:20}) : sid ? await s.readSpace(sid) : await s.bootstrap(), { headers: { 'Cache-Control': 'no-store' } });
+    const s = await service(), params=new URL(request.url).searchParams, sid=params.get('space'), task=params.get('task'),source=params.get('source'),change=params.get('change');
+    return Response.json(change ? await s.readGuidance({change_id:change,cursor:params.get('cursor')||undefined,limit:20}) : source ? await s.readSource(source) : task ? await s.readTask({task_id:task,cursor:params.get('cursor')||undefined,limit:20}) : sid ? await s.readSpace(sid) : await s.bootstrap(), { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return errorResponse(e); }
 }
 export async function POST(request: Request) {

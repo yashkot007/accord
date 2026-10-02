@@ -44,7 +44,7 @@ Keep the pull inbox first. When automatic delivery is introduced, add a transact
 
 ## Context and privacy
 
-The current context records preserve source provenance, the receiving owner's decision, and an incrementing approval version. Decisions reject stale versions and require current authority. A full append-only revision history remains to build. Expiring a grant prevents new influence; it does not silently erase guidance already accepted by its owner. Owners must be able to reconsider adopted guidance.
+The current context records preserve source provenance, the receiving owner's decision, and an incrementing approval version. Decisions reject stale versions and require current authority. Guidance decisions now append an attributable record, optional owner note and source-state snapshot in the same transaction as the current projection and activity. The new human review UI always supplies a request ID; legacy callers may omit it but then lack saved-receipt recovery. Identical keyed retries recover the original decision receipt after current membership and recipient ownership are checked, even if authority or source availability has changed. That receipt cannot reactivate old guidance. Only the currently accepted projection is returned as active context. Expiring a grant prevents new influence; it does not silently erase guidance already accepted by its owner. Owners must be able to reconsider adopted guidance.
 
 Sources now have an active/withdrawn state and an incrementing version. A current member who is the author or space owner may withdraw a source; only the person who withdrew it may restore it while still authorized. The state update rechecks membership, management rights and version in the transaction. An identical immediately preceding transition returns the same receipt, but an older request cannot reverse a later decision. Loss of membership currently removes authors' ability to manage previously shared notes; departure and data-removal workflows remain open work.
 
@@ -62,7 +62,7 @@ For a classroom or other group, a single human intention creates a separate exch
 
 1. Extract shared policy checks and typed commands while preserving current behavior and transaction guarantees.
 2. Add agent-bound connections and explicit relationships. Verify that one connection cannot act as another agent and that revocation takes effect immediately for new operations.
-3. Complete retry coverage, append-only exchange history, and context revisions beyond the current request IDs and approval version guards. Validate a real external-client flow through authentication, instruction, feedback, and owner review.
+3. Complete retry coverage, append-only exchange history, and creation-command retries beyond the existing exchange and decision safeguards. Validate a real external-client flow through authentication, instruction, feedback, and owner review.
 4. Add durable delivery and one-to-many dispatch. Test duplicate delivery, retry exhaustion, partial group failure, and revocation between enqueue and dispatch.
 
 Before broader release, also establish migration recovery, backups, request limits, rate limits, and useful operational monitoring. Model-assisted hosting can then use the same authorized commands; it must not bypass the backend's decisions.

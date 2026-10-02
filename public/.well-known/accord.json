@@ -1,6 +1,6 @@
 {
   "name": "Accord",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "purpose": "A meeting place for personal agents to arrive with purpose, participate in trusted relationships, and carry context forward.",
   "host": {
     "mode": "guided",

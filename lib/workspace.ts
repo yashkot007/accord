@@ -208,28 +208,7 @@ export class Workspace {
       await this.member(grant.space_id); await this.ownedAgent(grant.to_agent, true);
       await this.db.batch([this.stmt('UPDATE grants SET status=? WHERE id=?', 'revoked', gid), this.event(grant.space_id, 'authority', 'Revoked an authority connection')]); return { revoked: true };
     }
-    if (action === 'decide_context') {
-      const cid = field(a, 'change_id', 100), decision = field(a, 'decision', 30), change = await this.one('SELECT * FROM changes WHERE id=?', cid);
-      if (!change) throw new AppError('Suggestion not found.', 404);
-      await this.member(change.space_id); await this.ownedAgent(change.to_agent, true);
-      if (!['accepted', 'declined', 'pending'].includes(decision)) throw new AppError('Choose accept, decline, or reconsider.');
-      if (decision === 'accepted') await this.activeGrant(change.grant_id, 'context');
-      const version=a.expected_version;
-      if (!Number.isSafeInteger(version) || (version as number)<0) throw new AppError('Refresh this guidance before deciding. Its review version is missing.',409);
-      const sourceVersion=a.expected_source_version;
-      if(decision==='accepted'&&change.source_id&&(!Number.isSafeInteger(sourceVersion)||(sourceVersion as number)<0))throw new AppError('Review the current source before accepting this guidance.',409);
-      const sourceGuard=decision==='accepted'&&change.source_id?` AND EXISTS (SELECT 1 FROM sources src WHERE src.id=changes.source_id AND src.space_id=changes.space_id AND src.status='active' AND src.version=?)`:'';
-      const adopted = decision === 'accepted' ? field(a, 'instruction', 5000) : null;
-      const authority=decision==='accepted'?` AND EXISTS (SELECT 1 FROM grants g WHERE g.id=changes.grant_id AND g.allow_context=1 AND ${liveGrant})`:'';
-      const saved=await this.db.batch([
-        this.stmt(`UPDATE changes SET status=?,adopted=?,updated_at=?,version=version+1 WHERE id=? AND version=?
-          AND EXISTS (SELECT 1 FROM agents a JOIN members m ON m.space_id=changes.space_id AND m.user_id=a.owner_id WHERE a.id=changes.to_agent AND a.owner_id=?)${authority}${sourceGuard}`,
-          decision,adopted,now(),cid,version,this.user.id,...(decision==='accepted'?[now()]:[]),...(sourceGuard?[sourceVersion]:[])),
-        this.changedEvent(change.space_id, 'context', `${decision === 'pending' ? 'Reopened' : decision === 'accepted' ? 'Accepted' : 'Declined'} “${change.title}”`)
-      ]);
-      if (!saved[0].meta.changes) throw new AppError('This guidance, its source, or its permissions changed. Refresh and review the latest version before deciding.',409);
-      return { status: decision, version:(version as number)+1 };
-    }
+    if (action === 'decide_context') return this.decideContext(a);
     if (action === 'invite_member') {
       const sid = field(a, 'space_id', 100), space = await this.member(sid);
       if (space.owner_id !== this.user.id) throw new AppError('Only the space owner can invite people.', 403);
@@ -326,6 +305,72 @@ export class Workspace {
     }
     throw new AppError('Unknown exchange.', 404);
   }
+  async decideContext(a:Args) {
+    const cid=field(a,'change_id',100),decision=field(a,'decision',30),change=await this.one('SELECT * FROM changes WHERE id=?',cid);
+    if(!change)throw new AppError('Suggestion not found.',404);
+    await this.member(change.space_id);await this.ownedAgent(change.to_agent,true);
+    if(!['accepted','declined','pending'].includes(decision))throw new AppError('Choose accept, decline, or reconsider.');
+    const expected=a.expected_version,sourceVersion=decision==='accepted'&&change.source_id?a.expected_source_version:null;
+    if(!Number.isSafeInteger(expected)||(expected as number)<0)throw new AppError('Refresh this guidance before deciding. Its review version is missing.',409);
+    if(decision==='accepted'&&change.source_id&&(!Number.isSafeInteger(sourceVersion)||(sourceVersion as number)<0))throw new AppError('Review the current source before accepting this guidance.',409);
+    const adopted=decision==='accepted'?field(a,'instruction',5000):null,note=field(a,'decision_note',2000,true),key=field(a,'request_id',100,true)||null;
+    const fingerprint=key?await hash(JSON.stringify({actor:this.user.id,decision,adopted,note,expected_version:expected,expected_source_version:sourceVersion})):null;
+    const receipt=(r:Row)=>({status:r.status,version:r.version,decision_id:r.id,recorded_at:r.created_at,note:'Receipt for this saved decision. Read the guidance for its current state.'});
+    const retry=async()=>{
+      if(!key)return null;
+      const previous=await this.one('SELECT * FROM context_decisions WHERE change_id=? AND request_key=?',cid,key);
+      if(!previous)return null;
+      if(previous.request_hash!==fingerprint)throw new AppError('This request reference was already used for a different decision. Start a new submission.',409);
+      await this.member(change.space_id);await this.ownedAgent(change.to_agent,true);
+      return receipt(previous);
+    };
+    const previous=await retry();if(previous)return previous;
+    if(decision==='accepted')await this.activeGrant(change.grant_id,'context');
+    const date=now(),decisionId=id(),version=(expected as number)+1;
+    const authority=decision==='accepted'?` AND EXISTS (SELECT 1 FROM grants g WHERE g.id=changes.grant_id AND g.allow_context=1 AND ${liveGrant})`:'';
+    const sourceGuard=decision==='accepted'&&change.source_id?` AND EXISTS (SELECT 1 FROM sources src WHERE src.id=changes.source_id AND src.space_id=changes.space_id AND src.status='active' AND src.version=?)`:'';
+    const eligible=`id=? AND version=? AND EXISTS (SELECT 1 FROM agents a JOIN members m ON m.space_id=changes.space_id AND m.user_id=a.owner_id WHERE a.id=changes.to_agent AND a.owner_id=?)${authority}${sourceGuard}`;
+    const parameters=[cid,expected,this.user.id,...(decision==='accepted'?[date]:[]),...(sourceGuard?[sourceVersion]:[])];
+    const saved=await this.db.batch([
+      // Preserve only the old projection that actually survives. Its actor and the
+      // source state at that earlier decision are unknown, even if today's source exists.
+      this.stmt(`INSERT INTO context_decisions (id,change_id,version,status,adopted,channel,source_id,created_at)
+        SELECT 'legacy-'||id,id,version,status,adopted,'legacy',source_id,updated_at FROM changes
+        WHERE ${eligible} AND (version>0 OR status<>'pending' OR adopted IS NOT NULL)
+        ON CONFLICT(change_id,version) DO NOTHING`,...parameters),
+      this.stmt(`UPDATE changes SET status=?,adopted=?,updated_at=?,version=version+1 WHERE ${eligible}`,decision,adopted,date,...parameters),
+      // Capture provenance at the same transaction boundary as the decision, not before it.
+      this.stmt(`INSERT INTO context_decisions (id,change_id,version,status,adopted,note,actor_id,channel,source_id,source_version,source_status,request_key,request_hash,created_at)
+        SELECT ?,c.id,c.version,c.status,c.adopted,?,?,'human',c.source_id,src.version,
+        CASE WHEN c.source_id IS NULL THEN NULL WHEN src.id IS NULL THEN 'missing' ELSE src.status END,?,?,?
+        FROM changes c LEFT JOIN sources src ON src.id=c.source_id AND src.space_id=c.space_id WHERE c.id=? AND changes()>0`,decisionId,note,this.user.id,key,fingerprint,date,cid),
+      this.changedEvent(change.space_id,'context',`${decision==='pending'?'Reopened':decision==='accepted'?'Accepted':'Declined'} “${change.title}”`)
+    ]);
+    if(!saved[1].meta.changes){const recovered=await retry();if(recovered)return recovered;throw new AppError('This guidance, its source, or its permissions changed. Refresh and review the latest version before deciding.',409);}
+    return receipt({id:decisionId,status:decision,version,created_at:date});
+  }
+  async readGuidance(a:Args,agentId?:string) {
+    const cid=field(a,'change_id',100);
+    const authorize=async()=>{
+      const row=await this.one(`SELECT c.*,${sourceProvenance},
+        CASE WHEN recipient.owner_id=? THEN 1 ELSE 0 END AS can_decide,
+        CASE WHEN recipient.owner_id=? AND (c.source_id IS NULL OR src.status='active') AND g.allow_context=1 AND ${liveGrant} THEN 1 ELSE 0 END AS can_accept
+        FROM changes c JOIN members m ON m.space_id=c.space_id JOIN agents recipient ON recipient.id=c.to_agent JOIN grants g ON g.id=c.grant_id
+        LEFT JOIN sources src ON src.id=c.source_id AND src.space_id=c.space_id WHERE c.id=? AND m.user_id=?`,this.user.id,this.user.id,now(),cid,this.user.id);
+      if(!row)throw new AppError('This guidance is not available to your account.',403);
+      if(agentId){await this.agentAccess(row.space_id,agentId);row.can_decide=0;row.can_accept=0;}
+      return row;
+    };
+    const current=await authorize(),page=pageRequest(a,JSON.stringify(['guidance-history',this.user.id,agentId??'human',cid]));
+    let after=-1;
+    if(page.after){const anchor=await this.one('SELECT version FROM context_decisions WHERE change_id=? AND id=?',cid,page.after.id);if(!anchor)throw new AppError('This history page is unavailable. Start again without a cursor.');after=anchor.version;}
+    const rows=await this.all(`SELECT d.id,d.change_id,d.version,d.status,d.adopted,d.note,d.actor_id,d.channel,d.source_id,d.source_version,d.source_status,d.created_at,p.name AS actor_name
+      FROM context_decisions d LEFT JOIN people p ON p.id=d.actor_id WHERE d.change_id=? AND d.version>? AND d.version<=? ORDER BY d.version LIMIT ?`,cid,after,current.version,page.limit+1);
+    if(!rows.length&&!page.after&&(current.version>0||current.status!=='pending'||current.adopted!==null))rows.push({id:'legacy-'+cid,change_id:cid,version:current.version,status:current.status,adopted:current.adopted,note:null,actor_id:null,actor_name:null,channel:'legacy',source_id:current.source_id,source_version:null,source_status:null,created_at:current.updated_at});
+    const result=pageResult(rows,page),fresh=await authorize();
+    // Keep the captured projection/history consistent; flags describe current permission only.
+    return {current:{...current,can_decide:fresh.can_decide,can_accept:fresh.can_accept},history:result.items,next_cursor:result.next_cursor,note:'History is a shared record, not active instructions. Only the current accepted decision is active guidance. Earlier overwritten decisions cannot be recovered; legacy snapshots have unknown decision-makers and historical source states.'};
+  }
   async readTask(a:Args,agentId?:string) {
     const tid=field(a,'task_id',100);
     const authorize=async()=>{
@@ -362,6 +407,7 @@ export class Workspace {
     const aid = field(a, 'agent_id', 100); await this.ownedAgent(aid);
     await this.touchAgent(aid);
     if (name === 'list_spaces') return { spaces: await this.all('SELECT s.* FROM spaces s JOIN space_agents sa ON sa.space_id=s.id JOIN members m ON m.space_id=s.id WHERE sa.agent_id=? AND m.user_id=?', aid, this.user.id) };
+    if (name === 'read_context_change') return this.readGuidance(a,aid);
     if (name === 'read_task') return this.readTask(a,aid);
     if (name === 'read_space') { const sid = field(a, 'space_id', 100); await this.agentAccess(sid, aid); return this.readSpace(sid); }
     if (name === 'read_inbox') {
