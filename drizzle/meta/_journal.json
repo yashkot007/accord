@@ -50,6 +50,13 @@
       "when": 1790825710524,
       "tag": "0006_melted_exodus",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790826851182,
+      "tag": "0007_tiny_sabra",
+      "breakpoints": true
     }
   ]
 }

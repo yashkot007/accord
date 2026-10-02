@@ -20,13 +20,16 @@ The public `/.well-known/accord.json` describes the agent entrance without expos
 
 - ChatGPT sign-in with server-enforced account and space membership.
 - Durable spaces, agent profiles, shared notes, permissions, instructions, context reviews, and activity in D1.
-- Personal invitations bound to the recipient’s verified sign-in email, with seven-day expiry and one-time use. Creating a code sends no email. Invitees must also have access through the private Site’s sharing controls.
+- Retry-safe space, profile and source creation with actor-scoped request receipts. The home setup retains its saved space if adding an agent fails, with retry and continue-without-agent options.
+- Personal invitations bound to the recipient’s verified sign-in email, with seven-day expiry and one-time acceptance. A retry by the same person recovers their membership receipt only while they still belong to the space. Creating a code sends no email. Invitees must also have access through the private Site’s sharing controls.
 - Receiving owners grant an agent permission to assign work and/or propose context changes within a space. Grants expire and can be revoked.
 - Authenticated remote MCP tools for agents to participate using the signed-in owner’s account.
 - A separate, clearly labeled illustrative space. Example interactions are temporary and never affect real agents or stored user data.
 - Guidance-decision history with owner notes, source-state snapshots, safe recovery of saved decisions, and explicit reuse of earlier wording as a new draft. Historical decisions are records; only the current accepted wording is active guidance.
 - Copy and Markdown export of accepted context, preserving scope, source availability, and reasoning.
 - Reversible source withdrawal with version checks, shared-read redaction, explicit management previews, and source-version checks before guidance adoption. Withdrawal retains stored content and cannot recall existing copies or accepted guidance.
+
+Unused invitations created before issuer tracking was introduced require a fresh code from the current owner. Existing members retain their access. New invitations become unusable if their issuing owner no longer owns and belongs to the space. Invitation codes are stored only as hashes; if their creation response is lost, the code cannot be recovered and a new invitation is required.
 
 ## Connect an assistant
 
@@ -75,6 +78,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_skinny_colossus.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0005_calm_shadow_king.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0006_melted_exodus.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0007_tiny_sabra.sql
 npm run dev -- --port 4317
 ```
 
@@ -87,6 +91,8 @@ node --test tests/*.test.mjs
 npx tsc --noEmit
 npm run build
 ```
+
+Setup tests cover creation receipts, competing retries, changed input, current access, atomic rollback, invitation issuer changes, and removal of membership between overlapping joins. Browser form request IDs survive retries within the open form; draft and request recovery across page reloads is not implemented.
 
 The workflow tests exercise private host visits, retry-safe arrivals, cross-agent routing, access loss at a threshold, immutable departure reports, disconnected visitors, two distinct users, invitation identity and replay checks, cross-user and cross-space isolation, directional permissions, context adaptation and reconsideration, expiry, revocation, disconnected agents, terminal task states, and concurrent changes to authority. Guidance-history tests cover current versus historical instructions, lost-response recovery, competing decisions, source provenance at commit, legacy preservation, pagination, and rollback. Task-history tests cover competing reports, lost-response recovery, atomic rollback, migration preservation, permission changes, and consistent reads during concurrent writes. Older feedback is labeled as a surviving snapshot with unknown authorship; reports overwritten before this feature cannot be reconstructed. Handler tests additionally exercise JSON-RPC validation, notifications that cannot dispatch writes, schema validation before service resolution, session recovery, inbox/context pagination, and permission loss between pages. Local HTTP testing also covers sign-in requirements, browser origin checks, MCP discovery and actual instruction/feedback exchanges. External provider OAuth connection is a separate user-driven verification step.
 

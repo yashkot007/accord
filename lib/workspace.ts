@@ -165,16 +165,7 @@ export class Workspace {
   }
   async human(action: string, a: Args): Promise<any> {
     if (action === 'set_source_state') return this.setSourceState(a);
-    if (action === 'create_space') {
-      const sid = id(), name = field(a, 'name', 80), purpose = field(a, 'purpose', 2000), topic = field(a, 'topic', 80);
-      await this.db.batch([this.stmt('INSERT INTO spaces (id,owner_id,name,purpose,topic,created_at) VALUES (?,?,?,?,?,?)', sid, this.user.id, name, purpose, topic, now()), this.stmt('INSERT INTO members (space_id,user_id,role) VALUES (?,?,?)', sid, this.user.id, 'owner'), this.event(sid, 'space', 'Created the space')]);
-      return { id: sid };
-    }
-    if (action === 'add_agent') {
-      const aid = id(), name = field(a, 'name', 80), provider = field(a, 'provider', 80);
-      await this.stmt('INSERT INTO agents (id,owner_id,name,provider,status,created_at) VALUES (?,?,?,?,?,?)', aid, this.user.id, name, provider, 'pending', now()).run();
-      return { id: aid };
-    }
+    if (['create_space','add_agent','add_source'].includes(action)) return this.createResource(action,a);
     if (action === 'disconnect_agent') {
       const aid = field(a, 'agent_id', 100); await this.ownedAgent(aid, true);
       const saved=await this.stmt('UPDATE agents SET status=? WHERE id=? AND owner_id=?', 'revoked', aid,this.user.id).run();
@@ -190,14 +181,6 @@ export class Workspace {
       ]);
       if(!saved[0].meta.changes)await this.agentAccess(sid,aid);
       return { attached: true };
-    }
-    if (action === 'add_source') {
-      const sid = field(a, 'space_id', 100); await this.member(sid);
-      const source = id(), title = field(a, 'title', 120), content = field(a, 'content', 20000), kind = field(a, 'kind', 40);
-      if (!['Note', 'Meeting notes', 'Resource', 'Agent context'].includes(kind)) throw new AppError('Choose a supported source type.');
-      const saved=await this.db.batch([this.stmt('INSERT INTO sources (id,space_id,title,content,kind,created_by,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM members WHERE space_id=? AND user_id=?)', source, sid, title, content, kind, this.user.id, now(),sid,this.user.id), this.changedEvent(sid, 'source', 'Shared a source')]);
-      if(!saved[0].meta.changes)throw new AppError('Your access to this space changed.',403);
-      return { id: source };
     }
     if (action === 'grant_authority') return this.grantAuthority(a);
     if (action === 'revoke_authority') {
@@ -217,22 +200,89 @@ export class Workspace {
       return { revoked: true };
     }
     if (action === 'decide_context') return this.decideContext(a);
-    if (action === 'invite_member') {
-      const sid = field(a, 'space_id', 100), space = await this.member(sid);
-      if (space.owner_id !== this.user.id) throw new AppError('Only the space owner can invite people.', 403);
-      const email = field(a, 'email', 254).toLowerCase(), role = field(a, 'role', 30);
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !['advisor', 'participant'].includes(role)) throw new AppError('Enter an email and choose a role.');
-      const code = crypto.randomUUID() + '-' + crypto.randomUUID();
-      await this.db.batch([this.stmt('INSERT INTO invites (code_hash,space_id,email,role,expires_at) VALUES (?,?,?,?,?)', await hash(code), sid, email, role, new Date(Date.now() + 7 * 86400000).toISOString()), this.event(sid, 'invite', 'Created a personal invitation')]); return { code, email, expires: '7 days' };
-    }
-    if (action === 'join_space') {
-      const code = field(a, 'code', 150), digest = await hash(code), invite = await this.one('SELECT * FROM invites WHERE code_hash=?', digest);
-      if (!invite || invite.email !== this.user.email.toLowerCase() || invite.expires_at <= now() || invite.used_by) throw new AppError('This invitation is invalid, expired, or belongs to a different email address.');
-      const results = await this.db.batch([this.stmt('UPDATE invites SET used_by=? WHERE code_hash=? AND used_by IS NULL AND expires_at>?', this.user.id, digest, now()), this.stmt('INSERT OR IGNORE INTO members (space_id,user_id,role) SELECT space_id,used_by,role FROM invites WHERE code_hash=? AND used_by=?', digest, this.user.id), this.event(invite.space_id, 'member', 'Joined the space')]);
-      if (!results[0].meta.changes) throw new AppError('This invitation has already been used.'); return { id: invite.space_id };
-    }
+    if (action === 'invite_member') return this.inviteMember(a);
+    if (action === 'join_space') return this.joinSpace(a);
     if (['send_instruction', 'report_progress', 'propose_context_change'].includes(action)) return this.exchange(action, a, 'human');
     throw new AppError('Unknown action.', 404);
+  }
+  async createResource(action:string,a:Args) {
+    // Keys belong to the authenticated creator and operation, independently of
+    // mutable resource ownership. Receipt recovery never restores resource state.
+    const payload=action==='create_space'
+      ? {name:field(a,'name',80),purpose:field(a,'purpose',2000),topic:field(a,'topic',80)}
+      : action==='add_agent'
+        ? {name:field(a,'name',80),provider:field(a,'provider',80)}
+        : {space_id:field(a,'space_id',100),title:field(a,'title',120),content:field(a,'content',20000),kind:field(a,'kind',40)};
+    if(action==='add_source'&&!['Note','Meeting notes','Resource','Agent context'].includes(payload.kind!))throw new AppError('Choose a supported source type.');
+    const key=field(a,'request_id',100,true)||null,fingerprint=key?await hash(JSON.stringify(payload)):null;
+    const receipt=(r:Row,replayed:boolean)=>({id:r.resource_id,recorded_at:r.created_at,replayed});
+    const recover=async()=>{
+      if(!key)return null;
+      const prior=await this.one('SELECT * FROM creation_requests WHERE actor_id=? AND action=? AND request_key=?',this.user.id,action,key);
+      if(!prior)return null;
+      if(prior.request_hash!==fingerprint)throw new AppError('This request reference was already used for different details. Start a new submission.',409);
+      const sql=action==='create_space'
+        ? 'SELECT s.id FROM spaces s JOIN members m ON m.space_id=s.id WHERE s.id=? AND m.user_id=?'
+        : action==='add_agent'
+          ? 'SELECT id FROM agents WHERE id=? AND owner_id=?'
+          : 'SELECT s.id FROM sources s JOIN members m ON m.space_id=s.space_id AND m.user_id=s.created_by WHERE s.id=? AND s.created_by=?';
+      if(!await this.one(sql,prior.resource_id,this.user.id))throw new AppError('The earlier record is no longer available to your account. It has not been recreated.',403);
+      return receipt(prior,true);
+    };
+    const previous=await recover();if(previous)return previous;
+    const resource=id(),date=now(),table=action==='create_space'?'spaces':action==='add_agent'?'agents':'sources';
+    const noReceipt='(? IS NULL OR NOT EXISTS (SELECT 1 FROM creation_requests WHERE actor_id=? AND action=? AND request_key=?))';
+    const keyArgs=[key,this.user.id,action,key];
+    let writes:D1PreparedStatement[];
+    if(action==='create_space')writes=[
+      this.stmt(`INSERT INTO spaces (id,owner_id,name,purpose,topic,created_at) SELECT ?,?,?,?,?,? WHERE ${noReceipt}`,resource,this.user.id,payload.name,payload.purpose,payload.topic,date,...keyArgs),
+      this.stmt("INSERT INTO members (space_id,user_id,role) SELECT ?,?,'owner' WHERE changes()>0",resource,this.user.id),
+      this.changedEvent(resource,'space','Created the space')
+    ];
+    else if(action==='add_agent')writes=[this.stmt(`INSERT INTO agents (id,owner_id,name,provider,status,created_at) SELECT ?,?,?,?,'pending',? WHERE ${noReceipt}`,resource,this.user.id,payload.name,payload.provider,date,...keyArgs)];
+    else {
+      await this.member(payload.space_id!);
+      writes=[this.stmt(`INSERT INTO sources (id,space_id,title,content,kind,created_by,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM members WHERE space_id=? AND user_id=?) AND ${noReceipt}`,resource,payload.space_id,payload.title,payload.content,payload.kind,this.user.id,date,payload.space_id,this.user.id,...keyArgs),this.changedEvent(payload.space_id!,'source','Shared a source')];
+    }
+    if(key)writes.push(this.stmt(`INSERT INTO creation_requests (actor_id,action,request_key,request_hash,resource_id,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM ${table} WHERE id=?)`,this.user.id,action,key,fingerprint,resource,date,resource));
+    let saved;
+    try{saved=await this.db.batch(writes);}catch(error){const recovered=await recover();if(recovered)return recovered;throw error;}
+    if(!saved[0].meta.changes){const recovered=await recover();if(recovered)return recovered;throw new AppError('Your access changed before saving. Refresh and try again.',403);}
+    return receipt({resource_id:resource,created_at:date},false);
+  }
+  async inviteMember(a:Args) {
+    const sid=field(a,'space_id',100),space=await this.member(sid);
+    if(space.owner_id!==this.user.id)throw new AppError('Only the space owner can invite people.',403);
+    const email=field(a,'email',254).toLowerCase(),role=field(a,'role',30);
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||!['advisor','participant'].includes(role))throw new AppError('Enter an email and choose a role.');
+    const code=crypto.randomUUID()+'-'+crypto.randomUUID(),digest=await hash(code);
+    const saved=await this.db.batch([
+      this.stmt(`INSERT INTO invites (code_hash,space_id,email,role,expires_at,created_by) SELECT ?,s.id,?,?,?,? FROM spaces s JOIN members m ON m.space_id=s.id AND m.user_id=s.owner_id WHERE s.id=? AND s.owner_id=?`,digest,email,role,new Date(Date.now()+7*86400000).toISOString(),this.user.id,sid,this.user.id),
+      this.changedEvent(sid,'invite','Created a personal invitation')
+    ]);
+    if(!saved[0].meta.changes)throw new AppError('Your permission to invite people changed. Refresh this space.',403);
+    return {code,email,expires:'7 days'};
+  }
+  async joinSpace(a:Args) {
+    const digest=await hash(field(a,'code',150)),email=this.user.email.toLowerCase();
+    // A consumed invitation can recover a receipt only; it cannot recreate membership.
+    const recover=async()=>{
+      const r=await this.one(`SELECT i.space_id FROM invites i JOIN members m ON m.space_id=i.space_id AND m.user_id=i.used_by WHERE i.code_hash=? AND i.used_by=?`,digest,this.user.id);
+      return r?{id:r.space_id,replayed:true}:null;
+    };
+    const previous=await recover();if(previous)return previous;
+    const invite=await this.one('SELECT * FROM invites WHERE code_hash=?',digest);
+    if(invite?.used_by===this.user.id){const recovered=await recover();if(recovered)return recovered;}
+    if(!invite||invite.email!==email||invite.used_by||invite.expires_at<=now())throw new AppError('This invitation is invalid, expired, already used, or belongs to another account.');
+    if(!invite.created_by)throw new AppError('This older invitation needs to be replaced. Ask the space owner for a new invitation.');
+    const saved=await this.db.batch([
+      this.stmt(`UPDATE invites SET used_by=? WHERE code_hash=? AND email=? AND used_by IS NULL AND julianday(expires_at)>julianday('now') AND role IN ('advisor','participant')
+        AND EXISTS (SELECT 1 FROM spaces s JOIN members m ON m.space_id=s.id AND m.user_id=s.owner_id WHERE s.id=invites.space_id AND s.owner_id=invites.created_by)`,this.user.id,digest,email),
+      this.stmt(`INSERT OR IGNORE INTO members (space_id,user_id,role) SELECT space_id,used_by,role FROM invites WHERE code_hash=? AND used_by=? AND changes()>0`,digest,this.user.id),
+      this.changedEvent(invite.space_id,'member','Joined the space')
+    ]);
+    if(!saved[0].meta.changes){const recovered=await recover();if(recovered)return recovered;throw new AppError('This invitation or your access changed. Ask the space owner for a new invitation.');}
+    return {id:invite.space_id,replayed:false};
   }
   async grantAuthority(a:Args) {
     const sid=field(a,'space_id',100),from=field(a,'from_agent',100),to=field(a,'to_agent',100);

@@ -16,7 +16,7 @@ test('two people exchange work and review context with enforced ownership, membe
   const invite = await a.human('invite_member', { space_id: space.id, email: 'B@example.test', role: 'participant' });
   await assert.rejects(c.human('join_space', { code: invite.code }));
   await b.human('join_space', { code: invite.code });
-  await assert.rejects(b.human('join_space', { code: invite.code }));
+  assert.equal((await b.human('join_space', { code: invite.code })).replayed,true);
   await assert.rejects(b.human('invite_member', { space_id: space.id, email: 'c@example.test', role: 'advisor' }));
   assert.equal((await b.bootstrap()).spaces.length, 1);
   await assert.rejects(c.readSpace(space.id));

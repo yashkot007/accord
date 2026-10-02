@@ -95,6 +95,7 @@ test('additive migration preserves legacy feedback without invented reporting pr
   // Independent source-state fields are required by the current workspace service.
   db.sqlite.exec(readFileSync(new URL('../drizzle/0004_skinny_colossus.sql',import.meta.url),'utf8'));
   db.sqlite.exec(readFileSync(new URL('../drizzle/0006_melted_exodus.sql',import.meta.url),'utf8'));
+  db.sqlite.exec(readFileSync(new URL('../drizzle/0007_tiny_sabra.sql',import.meta.url),'utf8'));
   const f=await pair(db),t=await task(f);
   db.sqlite.prepare("UPDATE tasks SET feedback='Surviving earlier report',status='working' WHERE id=?").run(t.id);
   db.sqlite.exec(readFileSync(new URL('../drizzle/0003_worried_shaman.sql',import.meta.url),'utf8'));
