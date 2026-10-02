@@ -242,17 +242,72 @@ export class Workspace {
       return {id:record,status:context?'pending':'queued'};
     }
     if (action === 'report_progress') {
-      const tid = field(a, 'task_id', 100), task = await this.one('SELECT * FROM tasks WHERE id=?', tid);
-      if (!task) throw new AppError('Instruction not found.', 404);
-      await this.member(task.space_id); await this.ownedAgent(task.to_agent); await this.activeGrant(task.grant_id, 'assign');
-      const status = field(a, 'status', 30), feedback = field(a, 'feedback', 8000);
-      if (!['working', 'needs_input', 'completed', 'declined'].includes(status)) throw new AppError('Choose a valid progress state.');
-      if (['completed', 'declined'].includes(task.status)) throw new AppError('This instruction is already closed.');
-      const saved = await this.db.batch([this.stmt(`UPDATE tasks SET status=?,feedback=?,updated_at=? WHERE id=? AND status IN (?,?,?) AND EXISTS (SELECT 1 FROM grants g WHERE g.id=tasks.grant_id AND g.allow_assign=1 AND ${liveGrant})`, status, feedback, now(), tid, 'queued', 'working', 'needs_input', now()), this.changedEvent(task.space_id, 'feedback', `Reported ${status.replaceAll('_', ' ')} on “${task.title}”`)]);
-      if (!saved[0].meta.changes) throw new AppError('This instruction or its authority changed. Refresh before trying again.', 409);
-      return { id: tid, status };
+      const tid=field(a,'task_id',100),task=await this.one('SELECT * FROM tasks WHERE id=?',tid);
+      if(!task)throw new AppError('Instruction not found.',404);
+      await this.member(task.space_id);await this.ownedAgent(task.to_agent,true);
+      if(channel==='agent')await this.agentAccess(task.space_id,task.to_agent);
+      const status=field(a,'status',30),feedback=field(a,'feedback',8000),key=field(a,'request_id',100),expected=a.expected_version;
+      if(!['working','needs_input','completed','declined'].includes(status))throw new AppError('Choose a valid progress state.');
+      if(!Number.isSafeInteger(expected)||(expected as number)<0)throw new AppError('Read the latest instruction before reporting progress.',409);
+      const fingerprint=await hash(JSON.stringify({actor:this.user.id,channel,status,feedback,expected_version:expected}));
+      const receipt=(update:Row)=>({id:tid,status:update.status,version:update.version,update_id:update.id,recorded_at:update.created_at,note:'Receipt for this saved report. Read the instruction for its current state.'});
+      const retry=async()=>{
+        const previous=await this.one('SELECT * FROM task_updates WHERE task_id=? AND request_key=?',tid,key);
+        if(!previous)return null;
+        if(previous.request_hash!==fingerprint)throw new AppError('This request reference was already used for a different report. Start a new submission.',409);
+        // A saved receipt grants no new authority. Recheck current read access before returning it.
+        await this.member(task.space_id);await this.ownedAgent(task.to_agent,true);
+        if(channel==='agent')await this.agentAccess(task.space_id,task.to_agent);
+        return receipt(previous);
+      };
+      const previous=await retry();if(previous)return previous;
+      await this.ownedAgent(task.to_agent);await this.activeGrant(task.grant_id,'assign');
+      if(['completed','declined'].includes(task.status))throw new AppError('This instruction is already closed.',409);
+      if(expected!==task.version)throw new AppError('A newer progress report is available. Review the history before submitting again.',409);
+      const updateId=id(),date=now(),version=task.version+1;
+      const eligible=`id=? AND version=? AND status IN ('queued','working','needs_input') AND EXISTS (SELECT 1 FROM agents recipient WHERE recipient.id=tasks.to_agent AND recipient.owner_id=?) AND EXISTS (SELECT 1 FROM grants g WHERE g.id=tasks.grant_id AND g.allow_assign=1 AND ${liveGrant})`;
+      const parameters=[tid,expected,this.user.id,date];
+      const saved=await this.db.batch([
+        // Preserve the one older snapshot that still exists before replacing the projection.
+        // Its assignment channel cannot establish who originally reported the feedback.
+        this.stmt(`INSERT INTO task_updates (id,task_id,version,status,feedback,channel,created_at)
+          SELECT 'legacy-'||id,id,0,status,feedback,'legacy',updated_at FROM tasks
+          WHERE ${eligible} AND version=0 AND feedback<>'' ON CONFLICT(task_id,version) DO NOTHING`,...parameters),
+        this.stmt(`UPDATE tasks SET status=?,feedback=?,version=version+1,updated_at=? WHERE ${eligible}`,status,feedback,date,...parameters),
+        this.stmt(`INSERT INTO task_updates (id,task_id,version,status,feedback,actor_id,agent_id,channel,request_key,request_hash,created_at)
+          SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE changes()>0`,updateId,tid,version,status,feedback,this.user.id,channel==='agent'?task.to_agent:null,channel,key,fingerprint,date),
+        this.changedEvent(task.space_id,'feedback',`Reported ${status.replaceAll('_',' ')} on “${task.title}”`)
+      ]);
+      if(!saved[1].meta.changes){const recovered=await retry();if(recovered)return recovered;throw new AppError('This instruction or its authority changed. Review the latest history before trying again.',409);}
+      return receipt({id:updateId,status,version,created_at:date});
     }
     throw new AppError('Unknown exchange.', 404);
+  }
+  async readTask(a:Args,agentId?:string) {
+    const tid=field(a,'task_id',100);
+    const authorize=async()=>{
+      const task=await this.one(`SELECT t.*,CASE WHEN recipient.owner_id=? ${agentId?'AND t.to_agent=?':''}
+        AND t.status IN ('queued','working','needs_input') AND g.allow_assign=1 AND ${liveGrant} THEN 1 ELSE 0 END AS can_report
+        FROM tasks t JOIN members m ON m.space_id=t.space_id JOIN grants g ON g.id=t.grant_id JOIN agents recipient ON recipient.id=t.to_agent
+        WHERE t.id=? AND m.user_id=?`,this.user.id,...(agentId?[agentId]:[]),now(),tid,this.user.id);
+      if(!task)throw new AppError('This instruction is not available to your account.',403);
+      if(agentId)await this.agentAccess(task.space_id,agentId);
+      return task;
+    };
+    const task=await authorize(),page=pageRequest(a,JSON.stringify(['task-history',this.user.id,agentId??'human',tid]));
+    let after=-1;
+    if(page.after){
+      const anchor=await this.one('SELECT version FROM task_updates WHERE task_id=? AND id=?',tid,page.after.id);
+      if(!anchor)throw new AppError('This history page is no longer available. Start again without a cursor.');
+      after=anchor.version;
+    }
+    const rows=await this.all(`SELECT u.id,u.task_id,u.version,u.status,u.feedback,u.actor_id,u.agent_id,u.channel,u.created_at,p.name AS actor_name,agent.name AS agent_name
+      FROM task_updates u LEFT JOIN people p ON p.id=u.actor_id LEFT JOIN agents agent ON agent.id=u.agent_id
+      WHERE u.task_id=? AND u.version>? AND u.version<=? ORDER BY u.version LIMIT ?`,tid,after,task.version,page.limit+1);
+    // Existing records remain readable without an unbounded migration or invented history.
+    if(task.version===0&&task.feedback&&!rows.length&&!page.after)rows.push({id:'legacy-'+task.id,task_id:task.id,version:0,status:task.status,feedback:task.feedback,actor_id:null,agent_id:null,channel:'legacy',created_at:task.updated_at,actor_name:null,agent_name:null});
+    const result=pageResult(rows,page),current=await authorize();
+    return {task:{...task,can_report:current.can_report},updates:result.items,next_cursor:result.next_cursor,note:'Reports are shared with this space. Earlier saved feedback may have an unknown reporter; overwritten reports from before history was enabled cannot be recovered. Reported outcomes are not independently verified.'};
   }
   async agentTool(name: string, a: Args): Promise<any> {
     if (name === 'list_my_agents') return { agents: await this.all('SELECT id,name,provider,status FROM agents WHERE owner_id=?', this.user.id) };
@@ -264,6 +319,7 @@ export class Workspace {
     const aid = field(a, 'agent_id', 100); await this.ownedAgent(aid);
     await this.touchAgent(aid);
     if (name === 'list_spaces') return { spaces: await this.all('SELECT s.* FROM spaces s JOIN space_agents sa ON sa.space_id=s.id JOIN members m ON m.space_id=s.id WHERE sa.agent_id=? AND m.user_id=?', aid, this.user.id) };
+    if (name === 'read_task') return this.readTask(a,aid);
     if (name === 'read_space') { const sid = field(a, 'space_id', 100); await this.agentAccess(sid, aid); return this.readSpace(sid); }
     if (name === 'read_inbox') {
       const status=field(a,'status',30,true);

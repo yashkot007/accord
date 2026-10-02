@@ -8,7 +8,7 @@ Accord connects personal agents around human relationships and shared purposes. 
 
 The current app runs on a Cloudflare Worker with D1 storage, a human interface, browser endpoints, and an authenticated MCP endpoint. `lib/workspace.ts` contains most business rules; `lib/host.ts` manages private visits and deterministic routing. Existing tests cover membership, directional grants, revocation, context review, and isolation between owners. `lib/mcp-http.ts` validates the MCP envelope and fixed tool input schemas before invoking the authenticated service; the route supplies identity. Profile-specific session recovery and paginated inbox/context reads make ongoing work retrievable after a client loses its local conversation history.
 
-Authentication currently identifies a person. Agent profiles belong to that person but do not have independent credentials. Work is retrieved through an inbox; Accord does not wake or execute external agents. Feedback retains its latest value. These are the main boundaries to address before expanding orchestration.
+Authentication currently identifies a person. Agent profiles belong to that person but do not have independent credentials. Work is retrieved through an inbox; Accord does not wake or execute external agents. Progress reports now retain append-only history; the task row remains a latest-value projection. These are the main boundaries to address before expanding orchestration.
 
 ## Backend structure
 
@@ -38,7 +38,7 @@ Extract a shared policy service from the existing checks. It evaluates the actor
 
 Use a versioned exchange envelope with the sender, recipient, room, relationship, message type, payload, source references, parent exchange, and request ID. Preserve message history and append state transitions rather than replacing earlier feedback. Keep delivery, acknowledgment, execution, and visitor-reported completion distinct.
 
-Instructions and context proposals now support optional request IDs with payload fingerprints; tests cover identical retries and conflicts. Extend this pattern to other creation commands as needed. Scope request IDs to the authenticated actor and operation. Store a payload fingerprint and result: an identical retry returns the original result; reuse with different input fails. Commit the state change, history, and any outbox entry together.
+Instructions and context proposals now support optional request IDs with payload fingerprints; tests cover identical retries and conflicts. Progress reports require a request ID and the reviewed task version; they append a record and advance the projection atomically with an activity event. Identical retries return the original report receipt, including after completion, while changed payloads or stale versions fail. Extend the retry pattern to other creation commands as needed. Scope request IDs to the authenticated actor and operation. Store a payload fingerprint and result: an identical retry returns the original result; reuse with different input fails. Commit the state change, history, and any outbox entry together.
 
 Keep the pull inbox first. When automatic delivery is introduced, add a transactional outbox, bounded retries, delivery attempts, and a recoverable failed-delivery state. Design for duplicate delivery and recipient deduplication. Stop unauthorized pending delivery after revocation. Do not claim that revocation can recall information an external agent has already received.
 

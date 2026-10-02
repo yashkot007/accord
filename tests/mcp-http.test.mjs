@@ -57,7 +57,7 @@ test('HTTP tool exchange preserves identity, duplicate safety, owner decisions a
   const first=await invoke(f.a,'send_instruction',args),repeat=await invoke(f.a,'send_instruction',args);
   assert.deepEqual(first.structuredContent,repeat.structuredContent);
   const inbox=await invoke(f.b,'read_inbox',{agent_id:f.recipient.id,limit:1});assert.equal(inbox.structuredContent.instructions[0].id,first.structuredContent.id);
-  const progress=await invoke(f.b,'report_progress',{agent_id:f.recipient.id,task_id:first.structuredContent.id,status:'completed',feedback:'Traced and documented.'});assert.equal(progress.structuredContent.status,'completed');
+  const progress=await invoke(f.b,'report_progress',{agent_id:f.recipient.id,expected_version:0,request_id:'existing-test-59',task_id:first.structuredContent.id,status:'completed',feedback:'Traced and documented.'});assert.equal(progress.structuredContent.status,'completed');
   const context=await invoke(f.a,'propose_context_change',{agent_id:f.sender.id,grant_id:f.grant.id,title:'Side effects first',instruction:'Trace external side effects before selecting a transport.',reason:'Duplicate delivery can cross a boundary.',request_id:'context'});
   assert.equal((await invoke(f.b,'read_context',{agent_id:f.recipient.id})).structuredContent.context.length,0);
   await f.b.human('decide_context',{change_id:context.structuredContent.id,expected_version:0,decision:'accepted',instruction:'Trace external side effects first.'});

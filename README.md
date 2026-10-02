@@ -32,11 +32,13 @@ After publishing, open the Site’s personal plugin in ChatGPT or Codex under **
 
 Other clients must support authenticated remote MCP with the Site’s OAuth flow. The endpoint is the Site’s origin followed by `/mcp`. Provider-specific support must be tested; entering a provider name in the UI does not establish an integration.
 
-Tools: `arrive_at_accord`, `consult_host`, `enter_room`, `leave_accord`, `list_sessions`, `list_my_agents`, `connect_agent`, `list_spaces`, `read_space`, `read_inbox`, `send_instruction`, `report_progress`, `propose_context_change`, and `read_context`.
+Tools: `arrive_at_accord`, `consult_host`, `enter_room`, `leave_accord`, `list_sessions`, `list_my_agents`, `connect_agent`, `list_spaces`, `read_space`, `read_task`, `read_inbox`, `send_instruction`, `report_progress`, `propose_context_change`, and `read_context`.
 
 If the assistant loses its conversation history, `list_sessions` recovers visits for its exact profile. `list_sessions`, `read_inbox`, and `read_context` accept an optional `limit` (1–100, default 50) and `cursor`. Continue with the returned `next_cursor` until it is null, keeping the same profile and filters. Every page checks current access. These are current-state reads, not a frozen snapshot: deduplicate by ID (and context version), and begin a fresh scan to reconcile changes made during an earlier scan.
 
 See the [interoperability evidence](docs/interoperability.md) for precisely what has been verified and what still requires a real client connection.
+
+Progress reports are append-only. Use `read_task` to inspect an instruction and its paginated history, including completed work. Pass the current `task.version` as `expected_version` and a unique `request_id` to `report_progress`. Retry an uncertain save with identical input and the same request ID; the returned receipt describes that saved report, even if the task has since moved on. A different report needs a new ID and a freshly reviewed version. New reports still require current authority. Historical receipts require current read access and do not grant new authority.
 
 The connection authenticates a **person**, not an independently credentialed agent. Clients connected to the same account can act as that account’s profiles. Profiles organize work and relationships; they are not separate security principals. Agents cannot grant authority or accept context through the MCP tools. Those decisions remain in the human interface.
 
@@ -65,6 +67,7 @@ Use Node 24 or later and `npm ci`. Run `npm run db:generate` only after schema c
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_useful_fenris.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_petite_cable.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_true_domino.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_worried_shaman.sql
 npm run dev -- --port 4317
 ```
 
@@ -78,7 +81,7 @@ npx tsc --noEmit
 npm run build
 ```
 
-The workflow tests exercise private host visits, retry-safe arrivals, cross-agent routing, access loss at a threshold, immutable departure reports, disconnected visitors, two distinct users, invitation identity and replay checks, cross-user and cross-space isolation, directional permissions, context adaptation and reconsideration, expiry, revocation, disconnected agents, terminal task states, and concurrent changes to authority. Handler tests additionally exercise JSON-RPC validation, notifications that cannot dispatch writes, schema validation before service resolution, session recovery, inbox/context pagination, and permission loss between pages. Local HTTP testing also covers sign-in requirements, browser origin checks, MCP discovery and actual instruction/feedback exchanges. External provider OAuth connection is a separate user-driven verification step.
+The workflow tests exercise private host visits, retry-safe arrivals, cross-agent routing, access loss at a threshold, immutable departure reports, disconnected visitors, two distinct users, invitation identity and replay checks, cross-user and cross-space isolation, directional permissions, context adaptation and reconsideration, expiry, revocation, disconnected agents, terminal task states, and concurrent changes to authority. Task-history tests cover competing reports, lost-response recovery, atomic rollback, migration preservation, permission changes, and consistent reads during concurrent writes. Older feedback is labeled as a surviving snapshot with unknown authorship; reports overwritten before this feature cannot be reconstructed. Handler tests additionally exercise JSON-RPC validation, notifications that cannot dispatch writes, schema validation before service resolution, session recovery, inbox/context pagination, and permission loss between pages. Local HTTP testing also covers sign-in requirements, browser origin checks, MCP discovery and actual instruction/feedback exchanges. External provider OAuth connection is a separate user-driven verification step.
 
 ## Product language
 

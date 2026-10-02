@@ -6,9 +6,9 @@ Reviewed 2026-09-30. This record separates application behavior from real provid
 
 | Environment | Evidence | What it establishes |
 | --- | --- | --- |
-| Local SQLite with generated migrations | 25 tests in `tests/*.test.mjs`, including four actual HTTP-handler tests | Tested workspace rules, request bounds, private exact-profile recovery, pagination, current permission checks, duplicate-safe work/proposals, and versioned human decisions. |
+| Local SQLite with generated migrations | 37 tests in `tests/*.test.mjs`, including HTTP-handler tests | Tested workspace rules, request bounds, private exact-profile recovery, pagination, current permission checks, duplicate-safe work/proposals, and versioned human decisions, progress history, atomic report rollback, and saved-report recovery. |
 | Local MCP handler | Initialize with 2025-11-25, 2025-06-18, and 2025-03-26; tool discovery; notification handling; malformed envelope/schema rejection; two synthetic owners complete an exchange | The implemented stateless JSON request path and business rules work in this test environment. The injected test resolver does not test OAuth or the hosting proxy. |
-| Local running application | HTTP initialization reports 0.4.0; all 14 tools discovered; signed-in session, inbox, and context page reads pass; missing/forged identity denied by local middleware; foreign origin denied by the development server | The framework route and local development sign-in work together. These checks do not test the production hosting authentication boundary. |
+| Local running application | HTTP initialization reports 0.5.0; all 15 tools discovered; signed-in session, inbox, context, and task history reads pass; missing/forged identity denied by local middleware; foreign origin denied by the development server | The framework route and local development sign-in work together. These checks do not test the production hosting authentication boundary. |
 | Private Sites publication | Release `fc34c68e0632194394f06b4ff50ad7bbb6c26938`, deployment `appgdep_6abdbe47d7d88191b4c1c9390c6ab345`, succeeded with MCP enabled | Hosting accepted that specific release. Later source revisions require their own successful deployment record. |
 | Direct live HTTP probe | Hosting returned Cloudflare 1010, `browser_signature_banned`, before application processing | Inconclusive for application authentication, header stripping, and MCP compatibility. This response must not be counted as a passed authorization test. |
 
@@ -37,3 +37,12 @@ Use consenting test accounts and synthetic content, and record the client/versio
 7. Record what is saved, what the external client actually retrieved, and what it reports applying separately. A successful deployment, tool read, or visitor report is not independently verified task success.
 
 Pagination is a current-state scan, not a snapshot: preserve filters, follow `next_cursor` until null, deduplicate by ID/version, and start a new scan to reconcile concurrent changes. Context reconsidered by its owner may disappear from subsequent pages. Inbox pages exclude work whose authority has since lapsed. Other collections such as `read_space` remain unpaginated; comprehensive response-size and rate limits are still release work.
+
+
+## Progress history contract, version 0.5.0
+
+`report_progress` now requires `expected_version` and `request_id`. Clients must refresh tool discovery and read the current instruction before reporting. This private-preview contract change intentionally rejects unversioned reports so one session cannot silently replace another session's progress. `read_task` retrieves closed instructions and pages their shared history independently of the actionable inbox. A saved receipt records its report version, status, update ID, and timestamp; it is not the current task state.
+
+History reads are consistent with the task version captured for that response. Each page rechecks current membership and agent access; pagination is not a snapshot across requests. Revoked authority stops new reports but does not erase shared history. An active, attached agent may recover a prior receipt after assignment authority expires; disconnection or removal of read access still prevents agent reads. A receiving human with current membership can recover their saved receipt even after disconnecting the profile.
+
+Local browser evidence: a competing synthetic agent report caused a 409, retained the human draft, and disabled saving until the newer history was explicitly reviewed. The reviewed completion then preserved all three reports. Keyboard Enter/Escape and focus restoration were checked. The history dialog was visually inspected at 425 CSS pixels; bounding checks at 425 and 734 CSS pixels found no horizontal overflow. This is limited local UI evidence, not a complete assistive-technology or device audit.

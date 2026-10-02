@@ -2,9 +2,9 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {Workspace} from '../../lib/workspace.ts';
 
-export function database() {
+export function database({through}={}) {
   const sqlite = new DatabaseSync(':memory:');
-  for (const migration of readdirSync(new URL('../../drizzle/', import.meta.url)).filter(f => f.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL('../../drizzle/' + migration, import.meta.url), 'utf8'));
+  for (const migration of readdirSync(new URL('../../drizzle/', import.meta.url)).filter(f => f.endsWith('.sql')&&(!through||f<=through)).sort()) sqlite.exec(readFileSync(new URL('../../drizzle/' + migration, import.meta.url), 'utf8'));
   function statement(sql, values = []) {
     return {
       bind(...args) { return statement(sql, args); },
@@ -16,8 +16,8 @@ export function database() {
   return { sqlite, prepare: statement, async batch(statements) { sqlite.exec('BEGIN'); try { const results = []; for (const s of statements) results.push(await s.run()); sqlite.exec('COMMIT'); return results; } catch (e) { sqlite.exec('ROLLBACK'); throw e; } } };
 }
 
-export async function pair() {
-  const db=database(), a=new Workspace(db,{id:'mentor',email:'mentor@example.test',name:'Mentor'}), b=new Workspace(db,{id:'recipient',email:'recipient@example.test',name:'Recipient'}), outsider=new Workspace(db,{id:'outsider',email:'outsider@example.test',name:'Outsider'});
+export async function pair(db=database()) {
+  const a=new Workspace(db,{id:'mentor',email:'mentor@example.test',name:'Mentor'}), b=new Workspace(db,{id:'recipient',email:'recipient@example.test',name:'Recipient'}), outsider=new Workspace(db,{id:'outsider',email:'outsider@example.test',name:'Outsider'});
   await a.bootstrap();await b.bootstrap();await outsider.bootstrap();
   const space=await a.human('create_space',{name:'Review',topic:'Engineering',purpose:'Better decisions'});
   const invitation=await a.human('invite_member',{space_id:space.id,email:b.user.email,role:'participant'});
