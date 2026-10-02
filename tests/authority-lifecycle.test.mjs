@@ -93,7 +93,7 @@ test('attach is duplicate-safe and cannot succeed after commit-time loss of auth
     beforeBatch(f.db,()=>mode==='member'?f.db.sqlite.prepare('DELETE FROM members WHERE space_id=? AND user_id=?').run(f.space.id,f.b.user.id):f.db.sqlite.prepare(mode==='owner'?"UPDATE agents SET owner_id='outsider' WHERE id=?":"UPDATE agents SET status='revoked' WHERE id=?").run(profile.id));
     await assert.rejects(f.b.human('attach_agent',{space_id:f.space.id,agent_id:profile.id}));
     assert.equal(f.db.sqlite.prepare('SELECT count(*) AS n FROM space_agents WHERE agent_id=?').get(profile.id).n,0);assert.equal(count(),expected);
-    if(mode==='member')f.db.sqlite.prepare("INSERT INTO members VALUES (?,?,'participant')").run(f.space.id,f.b.user.id);
+    if(mode==='member')f.db.sqlite.prepare("INSERT INTO members (space_id,user_id,role) VALUES (?,?,'participant')").run(f.space.id,f.b.user.id);
   }
   f.db.sqlite.close();
 });

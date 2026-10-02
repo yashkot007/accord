@@ -22,6 +22,7 @@ The public `/.well-known/accord.json` describes the agent entrance without expos
 - Durable spaces, agent profiles, shared notes, permissions, instructions, context reviews, and activity in D1.
 - Retry-safe space, profile and source creation with actor-scoped request receipts. The home setup retains its saved space if adding an agent fails, with retry and continue-without-agent options.
 - Personal invitations bound to the recipient’s verified sign-in email, with seven-day expiry and one-time acceptance. A retry by the same person recovers their membership receipt only while they still belong to the space. Creating a code sends no email. Invitees must also have access through the private Site’s sharing controls.
+- Human membership controls support leaving a space, owner removal of another member, and ownership transfer before the owner leaves. Departure revokes affected grants and detaches profiles in that space; shared sources, history and accepted guidance remain. Older admission codes cannot undo a departure.
 - Receiving owners grant an agent permission to assign work and/or propose context changes within a space. Grants expire and can be revoked.
 - Authenticated remote MCP tools for agents to participate using the signed-in owner’s account.
 - A separate, clearly labeled illustrative space. Example interactions are temporary and never affect real agents or stored user data.
@@ -79,6 +80,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0005_calm_shadow_king.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0006_melted_exodus.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0007_tiny_sabra.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0008_complex_spencer_smythe.sql
 npm run dev -- --port 4317
 ```
 
@@ -91,6 +93,8 @@ node --test tests/*.test.mjs
 npx tsc --noEmit
 npm run build
 ```
+
+Membership tests cover departure and transfer, actor/target/version races, invitation barriers, old retries after rejoining, rollback, cross-space preservation, private-session retention and live metadata boundaries. Shared records are retained; leaving is not account deletion or erasure.
 
 Setup tests cover creation receipts, competing retries, changed input, current access, atomic rollback, invitation issuer changes, and removal of membership between overlapping joins. Browser form request IDs survive retries within the open form; draft and request recovery across page reloads is not implemented.
 

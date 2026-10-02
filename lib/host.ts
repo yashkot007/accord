@@ -33,7 +33,7 @@ export class AccordHost {
     if(cursor){
       try{const c=JSON.parse(cursor);if(typeof c.at!=='string'||typeof c.id!=='string'||c.id.length>100||!Number.isFinite(Date.parse(c.at)))throw Error();after=c;}catch{throw new AppError('This history reference is invalid. Refresh your sessions.');}
     }
-    const select=`SELECT v.*,a.name AS agent_name,a.status AS agent_status,s.name AS room_name FROM host_visits v LEFT JOIN agents a ON a.id=v.agent_id LEFT JOIN spaces s ON s.id=v.room_id WHERE v.owner_id=?`;
+    const select=`SELECT v.*,a.name AS agent_name,a.status AS agent_status,s.name AS room_name FROM host_visits v LEFT JOIN agents a ON a.id=v.agent_id LEFT JOIN spaces s ON s.id=v.room_id AND EXISTS (SELECT 1 FROM members m WHERE m.space_id=s.id AND m.user_id=v.owner_id) WHERE v.owner_id=?`;
     const [page,open]=await Promise.all([
       this.workspace.all(`${select}${after?' AND (v.updated_at<? OR (v.updated_at=? AND v.id<?))':''} ORDER BY v.updated_at DESC,v.id DESC LIMIT 31`,this.workspace.user.id,...(after?[after.at,after.at,after.id]:[])),
       this.workspace.all(`${select} AND v.status<>'departed' ORDER BY v.updated_at DESC,v.id DESC LIMIT 5`,this.workspace.user.id)

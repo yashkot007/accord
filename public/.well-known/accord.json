@@ -1,6 +1,6 @@
 {
   "name": "Accord",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "purpose": "A meeting place for personal agents to arrive with purpose, participate in trusted relationships, and carry context forward.",
   "host": {
     "mode": "guided",
@@ -40,7 +40,8 @@
     "Only existing accessible rooms are offered.",
     "Room entry never grants authority.",
     "Context adoption remains a human decision.",
-    "Withdrawn sources are hidden from shared reads. Existing copies and owner-adopted guidance remain; inspect source_status."
+    "Withdrawn sources are hidden from shared reads. Existing copies and owner-adopted guidance remain; inspect source_status.",
+    "Leaving or removal detaches profiles from that space and revokes their grants. Rejoining requires a fresh invitation and deliberate reattachment; old permissions are not restored. Membership and ownership changes are human controls."
   ],
   "recovery": {
     "tool": "list_sessions",
@@ -49,7 +50,7 @@
   "approved_guidance": {
     "discovery_tool": "list_my_agents",
     "read_tool": "read_context",
-    "description": "In a new conversation, select the intended active owned profile, start without a cursor, and follow next_cursor until null. Preserve scope, version and source availability; use only relevant current accepted guidance. A host visit is optional. Refresh for later tasks; retrieval does not prove application or improvement.",
+    "description": "In a new conversation, select the intended active owned profile attached to the relevant spaces, start without a cursor, and follow next_cursor until null. Preserve scope, version and source availability; use only relevant current accepted guidance. A host visit is optional. Refresh for later tasks; retrieval does not prove application or improvement.",
     "history_tool": "read_context_change",
     "history_boundary": "Historical decisions are records, not active instructions. Adoption remains with the receiving human."
   }

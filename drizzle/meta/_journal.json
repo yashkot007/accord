@@ -57,6 +57,13 @@
       "when": 1790826851182,
       "tag": "0007_tiny_sabra",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790827792257,
+      "tag": "0008_complex_spencer_smythe",
+      "breakpoints": true
     }
   ]
 }

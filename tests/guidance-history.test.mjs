@@ -81,6 +81,7 @@ test('additive history migration preserves only surviving legacy decisions witho
     // Independent grant-receipt fields are required by the current setup service.
     db.sqlite.exec(readFileSync(new URL('../drizzle/0006_melted_exodus.sql',import.meta.url),'utf8'));
   db.sqlite.exec(readFileSync(new URL('../drizzle/0007_tiny_sabra.sql',import.meta.url),'utf8'));
+  db.sqlite.exec(readFileSync(new URL('../drizzle/0008_complex_spencer_smythe.sql',import.meta.url),'utf8'));
     const f=await pair(db),{c}=await proposed(f,true);
     db.sqlite.prepare('UPDATE changes SET status=?,adopted=?,version=4 WHERE id=?').run(status,status==='accepted'?'Known older wording':null,c.id);
     db.sqlite.exec(readFileSync(new URL('../drizzle/0005_calm_shadow_king.sql',import.meta.url),'utf8'));
