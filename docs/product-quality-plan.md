@@ -8,6 +8,8 @@ Use the [functional POC acceptance path](interoperability.md#functional-poc-acce
 
 The owner additionally requested Granola and personal-agent connections on 2026-10-01. The [provider connection record](provider-integrations.md) separates implemented OAuth/import behavior, plugin setup, and provider paths still awaiting verification. This extends the functional POC; it does not establish owner approval or marketplace readiness.
 
+Muse is now the owner's first provider priority. Prepare its actual onboarding and verify its real agent calls before claiming compatibility. [Muse setup](muse-connection.md) records the sign-in gate, current preparation and remaining technical requirements. The earlier Granola consent test remains unfinished; this priority change does not establish that result.
+
 Reviewed 2026-09-30. Status: proposed requirements and evidence gates, not a completion report. Public research informs the plan; it does not establish demand, retention, security certification, or production readiness for Accord.
 
 The goal is a dependable service people voluntarily reuse with their personal agents. It includes identity, permissions, exchanges, recovery, operations, support, and usable interfaces. Mentorship, onboarding, consulting, coaching, teaching, and other relationships should share the same foundations. A polished webpage alone does not meet this goal.

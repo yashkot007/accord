@@ -6,7 +6,7 @@ Updated 2026-10-01. This describes the implementation and its evidence, not univ
 | --- | --- | --- |
 | Granola | Browser OAuth start and dynamic registration verified on the private Site; encrypted server-side credentials, discovered read-only MCP tools, private previews and person-selected excerpt imports implemented | Real consent/callback, actual tool schemas, note reads, expiry and disconnect with a consenting account |
 | OpenAI dots | Instructions for enabling Accord's existing plugin and selecting an account-owned profile | A real dot invocation and full exchange; installed Codex plugin evidence is separate |
-| Meta Muse | Clearly marked unconnected profile setup and provider requirements link | Consumer connector contract, review/access and actual authorization/calls |
+| Meta Muse | First setup card; dedicated onboarding dialog, owned profile selection, connection details and failure-aware verification prompt | Consumer connector contract behind Muse work-email sign-in, review/access and actual authorization/calls; see [Muse setup record](muse-connection.md) |
 | Instinct | Clearly marked unconnected profile setup | Owner's intended product URL and its supported connector contract |
 
 ## Granola connection contract
@@ -25,7 +25,7 @@ Reading creates an encrypted private preview with a 20-minute application expiry
 
 [dots documentation](https://learn.chatgpt.com/docs/dots/computers-and-apps) describes using supported plugins enabled for its account. Accord offers setup instructions for that path; it does not control a person's dot or write its private memory. A provider profile only organizes Accord participation and is not an independently credentialed agent.
 
-The [Meta Muse connector platform](https://muse.ai/platform) presents a provider submission path. Public consumer protocol details and Accord approval have not been established. Muse Code documentation describes a separate product and is not evidence of personal Muse compatibility. Instinct requires an exact product URL from the owner before choosing a supported connection method.
+The owner prioritized Muse on 2026-10-01. Chrome verified that “Submit a connector” on the [Meta Muse connector platform](https://muse.ai/platform) opens a work-email sign-in before showing technical requirements. Accord provides a dedicated setup dialog and [preparation record](muse-connection.md); the public endpoint, selected owned profile and verification prompt do not create provider access. Public consumer protocol details and Accord approval have not been established. Muse Code documentation describes a separate product and is not evidence of personal Muse compatibility. Instinct requires an exact product URL from the owner before choosing a supported connection method.
 
 ## Local evidence and next live check
 
