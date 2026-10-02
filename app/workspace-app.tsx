@@ -6,7 +6,7 @@ import { MembershipDialog, type MembershipAction } from './membership-dialog';
 import { TaskDialog } from './task-dialog';
 import { SourceDialog } from './source-dialog';
 import { GuidanceDialog } from './guidance-dialog';
-import { ProviderConnections,GranolaNotesDialog,MuseSetupDialog } from './provider-connections';
+import { ProviderConnections,GranolaNotesDialog,MuseSetupDialog,InstinctSetupDialog } from './provider-connections';
 import { exampleSpace } from '@/lib/example';
 type Row = Record<string, any>;
 type Field = { key: string; label: string; type?: string; placeholder?: string; options?: { value: string; label: string }[]; value?: any; optional?: boolean; max?: number; help?: string };
@@ -53,6 +53,7 @@ export default function WorkspaceApp({ initialUser, initialPage = 'spaces', init
   const [sourceDialog,setSourceDialog]=useState<string|null>(null);
   const [granolaOpen,setGranolaOpen]=useState(false);
   const [museProfileOpen,setMuseProfileOpen]=useState<string|null>(null);
+  const [instinctProfileOpen,setInstinctProfileOpen]=useState<string|null>(null);
   const [membershipDialog,setMembershipDialog]=useState<{userId:string;action:MembershipAction}|null>(null);
   const [taskDialog,setTaskDialog]=useState<{id:string;report:boolean}|null>(null);
   const [example, setExample] = useState<Row>(() => structuredClone(exampleSpace));
@@ -128,6 +129,7 @@ export default function WorkspaceApp({ initialUser, initialPage = 'spaces', init
   async function copy(text: string) { try { await navigator.clipboard.writeText(text); notify('Copied.'); } catch { setModal({ title: 'Copy this text', content: <textarea className="copy-text" readOnly value={text} onFocus={e => e.target.select()} rows={8} /> }); } }
   function connectInfo(agent?: Row) {
     if(agent&&['muse','meta muse'].includes(String(agent.provider).trim().toLowerCase())){setMuseProfileOpen(agent.id);return;}
+    if(agent&&['instinct','instinct ai'].includes(String(agent.provider).trim().toLowerCase())){setInstinctProfileOpen(agent.id);return;}
     setModal({ title: agent ? `Connect ${agent.name}` : 'Connect your assistant', description: 'Use the authenticated Accord site connection from a compatible assistant.', content: <div className="connection-help"><ol><li>Use the ChatGPT account and workspace where Accord was created. If the plugin is missing, check your account and workspace first.</li><li>In ChatGPT or Codex, open <strong>Plugins · Personal · Created by you</strong>, then install or connect Accord. Sign in to the connection with the account that owns your agent profile.</li><li>Ask your assistant to list your agents and connect the matching profile.</li></ol>{agent && <><p className="small-label">Agent profile ID</p><div className="copy-box"><code>{agent.id}</code><button className="icon-button" aria-label="Copy agent ID" onClick={() => copy(agent.id)}><Copy size={16} /></button></div></>}<details><summary>Other compatible assistants</summary><p>A remote MCP client must support the site’s OAuth sign-in. Provider support varies.</p><div className="copy-box"><code>{typeof window !== 'undefined' ? window.location.origin : ''}/mcp</code><button className="icon-button" aria-label="Copy connection address" onClick={() => copy(window.location.origin + '/mcp')}><Copy size={16} /></button></div></details><p className="note">A connection can use the agent profiles owned by its signed-in account. Profiles are not separate sign-ins. Status updates after an agent call. Assistants check for work when invoked; this app does not schedule them or change their provider’s memory.</p></div> });
   }
   function dotsSetup(){setModal({title:'Connect your dot to Accord',description:'Dots can use supported plugins installed and enabled for their account.',content:<div className="connection-help"><ol><li>Enable the Accord plugin in the ChatGPT account used by your dot, and authorize it with your Accord account.</li><li>Create or choose an Accord agent profile for your dot.</li><li>Ask your dot: “Use Accord to list my agents and connect my dots profile. Read its accepted guidance before helping me.”</li><li>Return here to confirm its status changes after a successful tool call.</li></ol><p className="note">Dots availability and plugin access depend on your account. Accord’s live connection is verified in Codex; use from a dot still needs testing.</p><a href="https://learn.chatgpt.com/docs/dots/computers-and-apps" target="_blank" rel="noreferrer" className="text-button">Official dots connection guide</a></div>});}
@@ -193,6 +195,7 @@ export default function WorkspaceApp({ initialUser, initialPage = 'spaces', init
     {sourceDialog&&<SourceDialog key={sourceDialog} sourceId={sourceDialog} onClose={()=>setSourceDialog(null)} onSaved={async()=>{await refresh(current?.id);}}/>}
     {granolaOpen&&<GranolaNotesDialog spaces={data.spaces} spaceId={current?.id} onClose={()=>setGranolaOpen(false)} onShared={()=>{void refresh(current?.id);notify('Selected Granola excerpt saved.');}}/>}
     {museProfileOpen&&<MuseSetupDialog key={museProfileOpen} agents={data.agents} initialProfileId={museProfileOpen} onClose={()=>setMuseProfileOpen(null)} onCreateProfile={()=>{setMuseProfileOpen(null);addAgent('Meta Muse');}}/>}
+    {instinctProfileOpen&&<InstinctSetupDialog key={instinctProfileOpen} agents={data.agents} initialProfileId={instinctProfileOpen} onClose={()=>setInstinctProfileOpen(null)} onCreateProfile={()=>{setInstinctProfileOpen(null);addAgent('Instinct');}}/>}
     {taskDialog&&<TaskDialog key={taskDialog.id} taskId={taskDialog.id} report={taskDialog.report} onClose={()=>setTaskDialog(null)} onSaved={async()=>{await refresh(current?.id);setTaskDialog(null);notify('Progress saved to the history.');}}/>}
     {modal && <FormDialog key={modal.title + (modal.action || '')} modal={modal} onClose={() => setModal(null)} onSubmit={submitModal} />}
     <div className={`toast ${toast ? 'visible' : ''}`} role="status" aria-live="polite">{toast}</div>
