@@ -1,0 +1,29 @@
+.accord-session-workspace{display:block;min-height:100svh;background:radial-gradient(ellipse at 100% 0,#e3f0e9,transparent 45%),#f5f8f6;--bg:#f5f8f6;--ink:#172c2b;--muted:#526561;--blue:#203d37;--blue-light:#ecf3ef;--line:#d4e1dc}
+.accord-session-workspace .topbar{height:auto;min-height:76px;padding:18px max(24px,calc((100vw - 1120px)/2));background:#ffffff75;backdrop-filter:blur(12px);gap:18px;flex-wrap:wrap}
+.session-back{font-size:.9375rem;font-weight:500;padding:8px 0}
+.session-tools{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.session-tools .text-button{font-size:.875rem}
+.accord-session-workspace main{width:100%;max-width:1120px;padding:48px 24px 64px}
+.accord-session-workspace h1{font-weight:500;font-size:clamp(2rem,4vw,3rem);letter-spacing:-.05em}
+.accord-session-workspace .page-heading{margin-bottom:28px}
+.accord-session-workspace .page-heading p{font-size:1rem;color:var(--muted);max-width:640px}
+.accord-session-workspace .page-heading .eyebrow{font-size:.875rem;letter-spacing:.03em}
+.accord-session-workspace .button{border-radius:10px;font-size:.875rem;min-height:44px}
+.accord-session-workspace .button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.accord-session-workspace .button.secondary{background:#ffffffb8;border-color:var(--line);color:var(--ink)}
+.accord-session-workspace .tabs{gap:28px;overflow-x:auto;justify-content:flex-start}
+.accord-session-workspace .tabs button{font-size:.875rem;max-width:none;white-space:nowrap}
+.accord-session-workspace .relationship-map,.accord-session-workspace .panel,.accord-session-workspace .quiet-card,.accord-session-workspace .attention-card,.accord-session-workspace .person-card{border-radius:14px;background:#ffffffba;border-color:var(--line);box-shadow:none}
+.accord-session-workspace .agent-node{border-radius:12px;background:#f2f7f4;border-color:var(--line)}
+.accord-session-workspace .agent-node>div>span,.accord-session-workspace .map-label>span,.accord-session-workspace .activity-item span,.accord-session-workspace .source-row span{color:var(--muted);font-size:.875rem}
+.accord-session-workspace .map-label{font-size:.875rem;letter-spacing:.025em}
+.accord-session-workspace .empty{padding:32px 24px}
+.accord-session-workspace .empty p,.accord-session-workspace .quiet-card p,.accord-session-workspace .map-empty,.accord-session-workspace .padded{font-size:.9375rem;color:var(--muted)}
+.accord-session-workspace .overview-grid{grid-template-columns:1fr 1fr;gap:28px}
+.accord-session-workspace .activity-item p,.accord-session-workspace .source-row strong{font-size:.9375rem;color:var(--ink)}
+.accord-session-workspace .source-row{min-height:64px}
+.accord-session-workspace .session-unavailable{padding:32px 0}
+.session-unavailable p{color:var(--muted);margin:14px 0 24px}
+.accord-session-workspace .agent-avatar,.accord-session-workspace .person-avatar,.accord-session-workspace .source-icon{background:#e7f0eb;color:var(--blue)}
+.accord-session-workspace .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:720px){.accord-session-workspace .topbar{padding:14px 20px;gap:10px}.session-tools{gap:14px}.accord-session-workspace main{padding:32px 20px 48px}.accord-session-workspace .overview-grid,.accord-session-workspace .connection-grid{grid-template-columns:1fr}.accord-session-workspace .page-heading{gap:20px}.accord-session-workspace .tabs{gap:22px}.accord-session-workspace .agent-node{display:flex;flex-wrap:wrap}}

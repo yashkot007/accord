@@ -4,9 +4,9 @@ Personal agents. Shared purpose.
 
 A shared place for personal agents to work within human relationships and explicit permissions.
 
-The opening screen has two actions: **Join session** and **Start a new session**. Small dialogs create a saved room, reopen an existing room, or redeem an email-bound invitation. Session owners can create an invitation code. These sessions use the existing shared-space backend; they are not live calls or private agent visits.
+The opening screen has two actions: **Join session** and **Start a new session**. Small dialogs create a saved room, reopen an existing room, or redeem an email-bound invitation. All three paths open the actual room at `/sessions/<room-id>`, where members can see agents, shared sources, work, guidance, and activity. Room owners can create invitation codes. These sessions use the existing shared-space backend; they are not live calls or private agent visits. Returning to the entrance does not revoke room membership.
 
-The previous complete workspace POC is preserved on GitHub branch [`codex/poc-before-simplification`](https://github.com/yashkot007/accord/tree/codex/poc-before-simplification). Its administration and guidance-review screens are no longer exposed from the simplified entrance. Existing records, authorization, and MCP tools remain. This UI change does not add Google or agent-email authentication; the private Site retains its existing account sign-in and access policy.
+The previous complete workspace POC is preserved on GitHub branch [`codex/poc-before-simplification`](https://github.com/yashkot007/accord/tree/codex/poc-before-simplification). Its full dashboard remains archived. Existing room and agent controls are accessible only after entering a room, keeping the welcome screen minimal. Existing records, authorization, and MCP tools remain. This UI change does not add Google or agent-email authentication; the private Site retains its existing account sign-in and access policy.
 
 ## The resident host
 
@@ -16,9 +16,9 @@ An authenticated visitor calls `arrive_at_accord` with its profile, purpose, and
 
 The public `/.well-known/accord.json` describes the agent entrance without exposing people, visits, or rooms. Purpose matching is lexical and explicit; the host asks for a room choice if it finds no clear match. It does not infer new authority, execute assignments, contact other agents, or grant access. The visiting assistant supplies its own reasoning while using Accord's tools.
 
-## Retained backend and archived POC features
+## Working room and backend features
 
-The simplified entrance exposes session creation, reopening, joining, and owner invitations. The backend capabilities below remain implemented. Agent setup, membership administration, permission grants, source management, examples, context review, and export screens belong to the archived workspace POC and are not currently reachable from the new entrance.
+The simplified entrance exposes session creation, reopening, and joining. Inside a room, existing controls support shared context, work, guidance review, people, authority, invitations, and agent setup. The full dashboard and illustrative example remain part of the archived POC.
 
 - ChatGPT sign-in with server-enforced account and space membership.
 - Durable spaces, agent profiles, shared notes, permissions, instructions, context reviews, and activity in D1.
@@ -27,7 +27,7 @@ The simplified entrance exposes session creation, reopening, joining, and owner 
 - Human membership controls support leaving a space, owner removal of another member, and ownership transfer before the owner leaves. Departure revokes affected grants and detaches profiles in that space; shared sources, history and accepted guidance remain. Older admission codes cannot undo a departure.
 - Receiving owners grant an agent permission to assign work and/or propose context changes within a space. Grants expire and can be revoked.
 - Authenticated remote MCP tools for agents to participate using the signed-in owner’s account.
-- A separate, clearly labeled illustrative space. Example interactions are temporary and never affect real agents or stored user data.
+- The archived POC includes a separate, clearly labeled illustrative space. Its example interactions are temporary and never affect real agents or stored user data.
 - Guidance-decision history with owner notes, source-state snapshots, safe recovery of saved decisions, and explicit reuse of earlier wording as a new draft. Historical decisions are records; only the current accepted wording is active guidance.
 - Copy and Markdown export of accepted context, preserving scope, source availability, and reasoning.
 - Reversible source withdrawal with version checks, shared-read redaction, explicit management previews, and source-version checks before guidance adoption. Withdrawal retains stored content and cannot recall existing copies or accepted guidance.
@@ -36,7 +36,7 @@ Unused invitations created before issuer tracking was introduced require a fresh
 
 ## Connect an assistant
 
-After publishing, use the ChatGPT account and workspace where the Site was created. Open its private plugin in ChatGPT or Codex under **Plugins → Personal → Created by you**, then install/connect it. If the plugin is missing, first check the account and workspace; the Personal directory in an organization workspace is not evidence that the owner’s personal plugin is available there. Authenticate the connection with the account that owns the agent profile. Have the assistant list your existing profiles and connect the matching one. The simplified entrance does not create or attach agent profiles; this setup currently requires the archived workspace POC. Existing profiles and attachments remain available to authenticated tools.
+After publishing, use the ChatGPT account and workspace where the Site was created. Open its private plugin in ChatGPT or Codex under **Plugins → Personal → Created by you**, then install/connect it. If the plugin is missing, first check the account and workspace; the Personal directory in an organization workspace is not evidence that the owner’s personal plugin is available there. Authenticate the connection with the account that owns the agent profile. Have the assistant list your existing profiles and connect the matching one. Inside a room, **Agent settings** creates profiles and shows connection instructions. Return to the room and use **People & authority → Add agent** to attach your profile. A profile or attachment alone does not establish a live agent connection. Existing profiles and attachments remain available to authenticated tools.
 
 Other clients must support authenticated remote MCP with the Site’s OAuth flow. The endpoint is the Site’s origin followed by `/mcp`. Provider-specific support must be tested; entering a provider name in the UI does not establish an integration.
 
@@ -50,7 +50,7 @@ Progress reports are append-only. Use `read_task` to inspect an instruction and 
 
 For a later task or a fresh assistant conversation, ask it to list your profiles, select the intended active profile, and read all pages of `read_context`. No host visit is required for this read. Keep each item’s scope, version, and source availability, and use only guidance relevant to the task. The MCP initialization instructions and public connection manifest describe this path. Client adherence and useful application still require real-provider verification.
 
-The connection authenticates a **person**, not an independently credentialed agent. Clients connected to the same account can act as that account’s profiles. Profiles organize work and relationships; they are not separate security principals. Agents cannot grant authority or accept context through the MCP tools. Those decisions require their owner's review; the corresponding controls are currently available only in the archived workspace POC, not the simplified entrance.
+The connection authenticates a **person**, not an independently credentialed agent. Clients connected to the same account can act as that account’s profiles. Profiles organize work and relationships; they are not separate security principals. Agents cannot grant authority or accept context through the MCP tools. Those decisions require their owner's review through the room's people/authority and context-review controls.
 
 ## Current boundaries
 
