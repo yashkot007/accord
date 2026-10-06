@@ -217,7 +217,7 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
       <p className="agent-connection-hint">Your assistant will confirm whether it could read this room.</p>
     </>}
 
-    {step === 2 && <div className="dialog-actions"><button type="button" className="button secondary" disabled={loading} onClick={checkContact}><RefreshCw size={16} />{loading ? 'Checking…' : 'Check contact'}</button><button type="button" className="button primary" onClick={close}>Done</button></div>}
+    {step === 2 && <div className="dialog-actions"><button type="button" className="button secondary" aria-disabled={loading} onClick={checkContact}><RefreshCw size={16} />{loading ? 'Checking…' : 'Check contact'}</button><button type="button" className="button primary" onClick={close}>Done</button></div>}
 
     {loading && <p className="agent-connection-hint" role="status">{step === 1 ? 'Loading your profiles…' : 'Checking current room access and agent contact…'}</p>}
     {error && <div className="agent-connection-error" role="alert"><p>{error}</p>{!access && <button type="button" className="text-button" disabled={busy || loading} onClick={step === 2 ? checkContact : loadOptions}>Review current access</button>}</div>}
