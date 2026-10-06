@@ -13,7 +13,10 @@ const indexedQueries=new Map([
 ]);
 
 async function fixture(){
-  const f=await pair(database({through:'0010_jittery_grey_gargoyle.sql'}));
+  const db=database({through:'0010_jittery_grey_gargoyle.sql'});
+  // Keep the pre-index baseline while supplying the current contact column.
+  db.sqlite.exec(readFileSync(new URL('../drizzle/0014_agent_contact.sql',import.meta.url),'utf8'));
+  const f=await pair(db);
   const sibling=await f.b.human('add_agent',{name:'Other owned profile',provider:'Synthetic review'});
   await f.b.human('attach_agent',{space_id:f.space.id,agent_id:sibling.id});
   const siblingGrant=await f.b.human('grant_authority',{space_id:f.space.id,from_agent:f.sender.id,to_agent:sibling.id,allow_assign:true,allow_context:true,expires_at:new Date(Date.now()+86400000).toISOString()});

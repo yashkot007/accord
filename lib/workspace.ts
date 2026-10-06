@@ -37,6 +37,7 @@ const sourceProvenance = `CASE WHEN c.source_id IS NULL THEN NULL WHEN src.id IS
 const safeEvents = (events:Row[]) => events.map(e=>e.kind==='source'?{...e,description:'Shared a source'}:e);
 const now = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
+export const agentContactIntervalMs = 30_000;
 // One eligibility rule for both actionable reads and mutation-time checks.
 // Alias g is local SQL, never caller input. The first binding is the current time.
 export const liveGrant = `g.status='active' AND g.expires_at>? AND EXISTS (
@@ -57,9 +58,20 @@ export class Workspace {
   async one(sql: string, ...args: any[]): Promise<Row | null> { return await this.stmt(sql, ...args).first() as Row | null; }
   event(space: string, kind: string, description: string) { return this.stmt('INSERT INTO events (id,space_id,actor_id,kind,description,created_at) VALUES (?,?,?,?,?,?)', id(), space, this.user.id, kind, description, now()); }
   changedEvent(space: string, kind: string, description: string) { return this.stmt('INSERT INTO events (id,space_id,actor_id,kind,description,created_at) SELECT ?,?,?,?,?,? WHERE changes()>0', id(), space, this.user.id, kind, description, now()); }
-  async touchAgent(agent: string) {
-    const result = await this.stmt('UPDATE agents SET status=?,last_seen_at=? WHERE id=? AND owner_id=? AND status<>?', 'connected', now(), agent, this.user.id, 'revoked').run();
-    if (!result.meta.changes) throw new AppError('This agent has been disconnected.', 403);
+  async touchAgent(agent: string, force = false) {
+    // Ownership is read afresh. Contact never substitutes for a resource's permission checks.
+    const current = await this.ownedAgent(agent), atMs = Date.now();
+    const previous = Date.parse(current.last_seen_at);
+    if (!force && current.status === 'connected' && Number.isFinite(previous) && previous > atMs - agentContactIntervalMs) return current;
+    const at = new Date(atMs).toISOString(), cutoff = new Date(atMs - agentContactIntervalMs).toISOString();
+    const recorded = await this.one(`UPDATE agents SET status='connected',
+      last_seen_at=CASE WHEN julianday(last_seen_at) IS NULL OR julianday(last_seen_at)<julianday(?) THEN ? ELSE last_seen_at END,
+      contact_version=contact_version+1
+      WHERE id=? AND owner_id=? AND status<>'revoked'
+      AND (?=1 OR status<>'connected' OR julianday(last_seen_at) IS NULL OR julianday(last_seen_at)<=julianday(?))
+      RETURNING *`, at, at, agent, this.user.id, force ? 1 : 0, cutoff);
+    // A concurrent contact may have won. A missing/revoked profile must still fail.
+    return recorded || this.ownedAgent(agent);
   }
   async member(space: string) {
     const r = await this.one('SELECT s.*,m.role,m.membership_key FROM spaces s JOIN members m ON m.space_id=s.id WHERE s.id=? AND m.user_id=?', space, this.user.id);
@@ -144,13 +156,15 @@ export class Workspace {
       return [] as Row[];
     }
     // Source state and current membership/profile attachment share the final database read.
+    // Drive source lookups by the bounded ID list, avoiding a scan of all room sources.
     const rows=await this.all(`SELECT s.membership_version,s.context_revision,m.membership_key,src.id,
       CASE WHEN src.status='active' THEN src.title ELSE 'Withdrawn source' END AS title,
       CASE WHEN src.status='active' THEN src.kind ELSE 'Unavailable' END AS kind,
       src.status,src.version,src.updated_at FROM spaces s JOIN members m ON m.space_id=s.id
       ${agentId?"JOIN space_agents sa ON sa.space_id=s.id AND sa.agent_id=? JOIN agents a ON a.id=sa.agent_id AND a.owner_id=m.user_id AND a.status<>'revoked'":''}
-      LEFT JOIN sources src ON src.space_id=s.id AND src.id IN (SELECT value FROM json_each(?))
-      WHERE s.id=? AND m.user_id=?`,...(agentId?[agentId]:[]),JSON.stringify(sources.map(source=>source.id)),space,this.user.id);
+      LEFT JOIN json_each(?) requested ON TRUE
+      LEFT JOIN sources src ON src.id=requested.value AND src.space_id=s.id
+      WHERE s.id=? AND m.user_id=?`,...(agentId?[agentId]:[]),JSON.stringify([...new Set(sources.map(source=>source.id))]),space,this.user.id);
     if(!rows.length)throw new AppError('This room is not available to this assistant.',403);
     if(rows[0].membership_key!==member.membership_key||rows[0].membership_version!==member.membership_version)throw new AppError('Membership changed while loading. Read this room again.',409);
     if(contextRevision!==undefined&&rows[0].context_revision!==contextRevision)throw new AppError('Guidance changed while preparing this export. Try again.',409);
@@ -162,7 +176,7 @@ export class Workspace {
     const page=pageRequest({...a,limit:a.limit??20},JSON.stringify(['room',this.user.id,agentId??'human',space,member.membership_key,member.membership_version,section,...(projection==='summary'?[]:[projection,filter,...(projection==='export'?[member.context_revision]:[])])]));
     const definitions:Record<string,{select:string;key:string;time?:string;bindings?:any[]}>= {
       people:{select:'SELECT m.user_id AS id,m.user_id,m.role,p.name,p.email FROM members m LEFT JOIN people p ON p.id=m.user_id WHERE m.space_id=?',key:'m.user_id'},
-      agents:{select:'SELECT a.id,a.name,a.provider,a.status,a.owner_id,a.last_seen_at,p.name AS owner_name FROM space_agents sa JOIN agents a ON a.id=sa.agent_id LEFT JOIN people p ON p.id=a.owner_id WHERE sa.space_id=?',key:'sa.agent_id'},
+      agents:{select:'SELECT a.id,a.name,a.provider,a.status,a.owner_id,a.last_seen_at,a.contact_version,p.name AS owner_name FROM space_agents sa JOIN agents a ON a.id=sa.agent_id LEFT JOIN people p ON p.id=a.owner_id WHERE sa.space_id=?',key:'sa.agent_id'},
       grants:{select:'SELECT g.id,g.space_id,g.from_agent,g.to_agent,g.scope,g.allow_assign,g.allow_context,g.status,g.expires_at,g.created_at FROM grants g WHERE g.space_id=?',key:'g.id',time:'g.created_at'},
       sources:{select:`SELECT src.id,src.space_id,CASE WHEN src.status='active' THEN src.title ELSE 'Withdrawn source' END AS title,CASE WHEN src.status='active' THEN src.kind ELSE 'Unavailable' END AS kind,src.status,src.version,src.created_at,src.updated_at FROM sources src WHERE src.space_id=?`,key:'src.id',time:'src.created_at'},
       tasks:{select:'SELECT t.id,t.space_id,t.grant_id,t.from_agent,t.to_agent,t.title,t.status,t.version,t.channel,t.created_at,t.updated_at FROM tasks t WHERE t.space_id=?',key:'t.id',time:'t.created_at'},
@@ -198,7 +212,7 @@ export class Workspace {
     const page=pageRequest({...a,limit:a.limit??20},JSON.stringify(['human-catalog',this.user.id,section,active]));
     let rows:Row[];
     if(section==='spaces')rows=await this.all(`SELECT s.id,s.name,s.purpose,s.topic,s.owner_id,s.created_at,s.membership_version,m.membership_key,m.role,(SELECT count(*) FROM space_agents sa WHERE sa.space_id=s.id) AS agent_count FROM members m JOIN spaces s ON s.id=m.space_id WHERE m.user_id=?${page.after?' AND m.space_id>?':''} ORDER BY m.space_id LIMIT ?`,this.user.id,...(page.after?[page.after.id]:[]),page.limit+1);
-    else if(section==='agents')rows=await this.all(`SELECT id,owner_id,name,provider,status,last_seen_at,created_at FROM agents WHERE owner_id=?${active?active==='yes'?" AND status<>'revoked'":" AND status='revoked'":''}${page.after?' AND id>?':''} ORDER BY id LIMIT ?`,this.user.id,...(page.after?[page.after.id]:[]),page.limit+1);
+    else if(section==='agents')rows=await this.all(`SELECT id,owner_id,name,provider,status,last_seen_at,contact_version,created_at FROM agents WHERE owner_id=?${active?active==='yes'?" AND status<>'revoked'":" AND status='revoked'":''}${page.after?' AND id>?':''} ORDER BY id LIMIT ?`,this.user.id,...(page.after?[page.after.id]:[]),page.limit+1);
     else if(section==='events')rows=safeEvents(await this.all(`SELECT e.id,e.space_id,e.kind,e.description,e.created_at,s.name AS space_name,s.membership_version,m.membership_key,p.name AS actor_name FROM events e JOIN members m ON m.space_id=e.space_id JOIN spaces s ON s.id=e.space_id LEFT JOIN people p ON p.id=e.actor_id WHERE m.user_id=?${page.after?' AND (e.created_at<? OR (e.created_at=? AND e.id<?))':''} ORDER BY e.created_at DESC,e.id DESC LIMIT ?`,this.user.id,...(page.after?[page.after.at,page.after.at,page.after.id]:[]),page.limit+1));
     else throw new AppError('Choose an available workspace collection.');
     const result=pageResult(rows,page);
@@ -260,7 +274,7 @@ export class Workspace {
   }
   async humanProfile(profileId:string,space?:string) {
     const member=space?await this.member(space):null;
-    const profile=await this.one(`SELECT a.id,a.owner_id,a.name,a.provider,a.status,a.last_seen_at,a.created_at${space?',s.membership_version,m.membership_key,EXISTS(SELECT 1 FROM space_agents sa WHERE sa.space_id=s.id AND sa.agent_id=a.id) AS attached':''} FROM agents a${space?' JOIN spaces s ON s.id=? JOIN members m ON m.space_id=s.id AND m.user_id=a.owner_id':''} WHERE a.id=? AND a.owner_id=? AND a.status<>'revoked'`,...(space?[space]:[]),profileId,this.user.id);
+    const profile=await this.one(`SELECT a.id,a.owner_id,a.name,a.provider,a.status,a.last_seen_at,a.contact_version,a.created_at${space?',s.membership_version,m.membership_key,EXISTS(SELECT 1 FROM space_agents sa WHERE sa.space_id=s.id AND sa.agent_id=a.id) AS attached':''} FROM agents a${space?' JOIN spaces s ON s.id=? JOIN members m ON m.space_id=s.id AND m.user_id=a.owner_id':''} WHERE a.id=? AND a.owner_id=? AND a.status<>'revoked'`,...(space?[space]:[]),profileId,this.user.id);
     if(!profile)throw new AppError('This assistant is not available to your account.',403);
     if(member&&(profile.membership_key!==member.membership_key||profile.membership_version!==member.membership_version))throw new AppError('Your room access changed. Refresh before continuing.',409);
     return {user:this.user,profile,attached:!!profile.attached};
@@ -273,7 +287,7 @@ export class Workspace {
     const member=space?await this.member(space):null;
     const page=pageRequest({...a,limit:a.limit??20},JSON.stringify(['human-choices',this.user.id,kind,space,member?.membership_key,member?.membership_version,capability,owned]));
     let rows:Row[];
-    if(kind==='agents')rows=await this.all(`SELECT a.id,a.name AS label,a.owner_id,a.provider,a.status,a.last_seen_at FROM agents a${space?' JOIN space_agents sa ON sa.agent_id=a.id JOIN members m ON m.space_id=sa.space_id AND m.user_id=a.owner_id':''} WHERE ${space?'sa.space_id=?':"a.owner_id=?"} AND a.status<>'revoked'${space&&owned==='yes'?' AND a.owner_id=?':''}${page.after?' AND a.id>?':''} ORDER BY a.id LIMIT ?`,space||this.user.id,...(space&&owned==='yes'?[this.user.id]:[]),...(page.after?[page.after.id]:[]),page.limit+1);
+    if(kind==='agents')rows=await this.all(`SELECT a.id,a.name AS label,a.owner_id,a.provider,a.status,a.last_seen_at,a.contact_version FROM agents a${space?' JOIN space_agents sa ON sa.agent_id=a.id JOIN members m ON m.space_id=sa.space_id AND m.user_id=a.owner_id':''} WHERE ${space?'sa.space_id=?':"a.owner_id=?"} AND a.status<>'revoked'${space&&owned==='yes'?' AND a.owner_id=?':''}${page.after?' AND a.id>?':''} ORDER BY a.id LIMIT ?`,space||this.user.id,...(space&&owned==='yes'?[this.user.id]:[]),...(page.after?[page.after.id]:[]),page.limit+1);
     else if(kind==='grants'&&space&&capability)rows=await this.all(`SELECT g.id,sender.name||' → '||recipient.name AS label FROM grants g JOIN agents sender ON sender.id=g.from_agent JOIN agents recipient ON recipient.id=g.to_agent WHERE g.space_id=? AND sender.owner_id=? AND g.allow_${capability}=1 AND ${liveGrant}${page.after?' AND g.id>?':''} ORDER BY g.id LIMIT ?`,space,this.user.id,now(),...(page.after?[page.after.id]:[]),page.limit+1);
     else if(kind==='sources'&&space)rows=await this.all(`SELECT id,title AS label FROM sources WHERE space_id=? AND status='active'${page.after?' AND id>?':''} ORDER BY id LIMIT ?`,space,...(page.after?[page.after.id]:[]),page.limit+1);
     else throw new AppError('Choose an available list.');
@@ -757,11 +771,10 @@ export class Workspace {
       const result=pageResult(rows,page);return {agents:result.items,next_cursor:result.next_cursor};
     }
     if (name === 'connect_agent') {
-      const aid = field(a, 'agent_id', 100); await this.ownedAgent(aid);
-      await this.touchAgent(aid);
-      return { connected: true, agent_id: aid, note: 'Connection recorded. Read your inbox when invoked; this service does not wake or schedule your assistant.' };
+      const aid = field(a, 'agent_id', 100), contact = await this.touchAgent(aid, true);
+      return { connected: true, agent_id: aid, contact_version: contact.contact_version, last_seen_at: contact.last_seen_at, note: 'Connection recorded. Read your inbox when invoked; this service does not wake or schedule your assistant.' };
     }
-    const aid = field(a, 'agent_id', 100); await this.ownedAgent(aid);
+    const aid = field(a, 'agent_id', 100);
     await this.touchAgent(aid);
     if (name === 'list_spaces') return this.listAgentRooms(a,aid);
     if (name === 'read_context_change') return this.readGuidance(a,aid);

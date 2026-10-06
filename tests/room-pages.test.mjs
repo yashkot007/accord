@@ -38,6 +38,21 @@ test('room overviews are bounded summaries and every tied-date record remains re
   }finally{f.db.sqlite.close();}
 });
 
+test('final room source checks use primary-key lookups for bounded previews',async()=>{
+  const f=await populated();
+  try{
+    const queries=[],all=f.a.all.bind(f.a);
+    f.a.all=async(sql,...args)=>{if(sql.includes('LEFT JOIN json_each(?) requested'))queries.push({sql,args});return all(sql,...args);};
+    const room=await f.a.agentTool('read_space',{space_id:f.space.id,agent_id:f.sender.id});
+    assert.equal(room.sources.length,20);assert.equal(queries.length,1);
+    const query=queries[0],plans=f.db.sqlite.prepare('EXPLAIN QUERY PLAN '+query.sql).all(...query.args).map(row=>row.detail);
+    assert.ok(plans.some(plan=>/SEARCH src USING INDEX sqlite_autoindex_sources_1 \(id=\?\)/.test(plan)),plans.join('\n'));
+    assert.ok(!plans.some(plan=>plan.includes('sources_space')),'final state check must not scan the room source index');
+    const page=await f.a.agentTool('read_space_section',{space_id:f.space.id,agent_id:f.sender.id,section:'sources',limit:100});
+    assert.equal(page.items.length,100);assert.equal(queries.at(-1).args.length,4,'one JSON binding keeps source checks inside D1 binding limits');
+  }finally{f.db.sqlite.close();}
+});
+
 test('room page cursors are bound to owner, profile, room, section and membership generation',async()=>{
   const f=await populated();
   try{
@@ -83,7 +98,7 @@ test('withdrawal at the final combined check hides source bodies and summary tit
     const f=await pair();
     try{
       const source=await f.a.human('add_source',{space_id:f.space.id,title:'Private after withdrawal',content:'Retained full source body',kind:'Note'}),all=f.a.all.bind(f.a);let changed=false;
-      f.a.all=async(sql,...args)=>{if(!changed&&sql.includes('LEFT JOIN sources src ON src.space_id=s.id')){changed=true;f.db.sqlite.prepare("UPDATE sources SET status='withdrawn',version=version+1 WHERE id=?").run(source.id);}return all(sql,...args);};
+      f.a.all=async(sql,...args)=>{if(!changed&&sql.includes('LEFT JOIN sources src ON src.id=requested.value')){changed=true;f.db.sqlite.prepare("UPDATE sources SET status='withdrawn',version=version+1 WHERE id=?").run(source.id);}return all(sql,...args);};
       const args={agent_id:f.sender.id,space_id:f.space.id,...(tool==='read_shared_source'?{source_id:source.id}:tool==='read_space_section'?{section:'sources'}:{})};
       if(tool==='read_shared_source')await assert.rejects(f.a.agentTool(tool,args),{status:409});
       else{const result=await f.a.agentTool(tool,args);assert.ok(!JSON.stringify(result).includes('Private after withdrawal'));assert.ok(!JSON.stringify(result).includes('Retained full source body'));}

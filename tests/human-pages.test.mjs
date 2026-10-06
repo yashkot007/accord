@@ -116,7 +116,7 @@ test('final source validation keeps human title, status and version coherent aft
       const source=await f.a.human('add_source',{space_id:f.space.id,title:'Withdrawn private title',content:'Retained source body',kind:'Note'});
       await f.a.human('propose_context_change',{grant_id:f.grant.id,title:'Guidance',instruction:'A separate proposal',reason:'Review',source_id:source.id});
       const all=f.a.all.bind(f.a);let changed=false;
-      f.a.all=async(sql,...args)=>{if(!changed&&sql.includes('LEFT JOIN sources src ON src.space_id=s.id')){changed=true;f.db.sqlite.prepare("UPDATE sources SET status='withdrawn',version=version+1 WHERE id=?").run(source.id);}return all(sql,...args);};
+      f.a.all=async(sql,...args)=>{if(!changed&&sql.includes('LEFT JOIN sources src ON src.id=requested.value')){changed=true;f.db.sqlite.prepare("UPDATE sources SET status='withdrawn',version=version+1 WHERE id=?").run(source.id);}return all(sql,...args);};
       const result=route==='overview'?await f.a.humanRoom(f.space.id):route==='guidance'?await f.a.humanRoomPage(f.space.id,'changes'):await f.a.humanChoices('sources',{space_id:f.space.id});
       assert.equal(changed,true);assert.ok(!JSON.stringify(result).includes('Withdrawn private title'));assert.ok(!JSON.stringify(result).includes('Retained source body'));
       if(route!=='choices'){const change=(result.changes||result.items)[0];assert.equal(change.source_status,'withdrawn');assert.equal(change.source_version,1);}

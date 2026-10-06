@@ -96,7 +96,7 @@ export class AccordHost {
   }
   async perform(action:string, a:Args, channel:'human'|'agent'='human') {
     const agentId=channel==='agent'?field(a,'agent_id',100):undefined;
-    if(agentId) {await this.visitor(agentId);await this.workspace.touchAgent(agentId);}
+    if(agentId) await this.workspace.touchAgent(agentId);
     if(action==='arrive_at_accord') {
       const aid=agentId ?? field(a,'agent_id',100,true); await this.visitor(aid);
       const purpose=field(a,'purpose',2000), service=field(a,'service',40);
