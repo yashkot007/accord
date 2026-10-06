@@ -86,6 +86,13 @@ async function hash(value: string) { return Array.from(new Uint8Array(await cryp
 export class Workspace {
   db: D1Database; user: User;
   constructor(db: D1Database, user: User) { this.db = db; this.user = user; }
+  // An optional actor precondition detects account changes between browser
+  // requests. It never supplies identity or substitutes for resource access.
+  assertExpectedOwner(expected:unknown) {
+    if(expected===undefined)return;
+    if(typeof expected!=='string'||!expected.trim())throw new AppError('Refresh your signed-in account before continuing.');
+    if(expected!==this.user.id)throw new AppError('Your signed-in account changed. Your earlier attempt is still available. Continue with its original account or start another session.',403);
+  }
   stmt(sql: string, ...args: any[]) { return this.db.prepare(sql).bind(...args); }
   async all(sql: string, ...args: any[]): Promise<Row[]> { return (await this.stmt(sql, ...args).all()).results as Row[]; }
   async one(sql: string, ...args: any[]): Promise<Row | null> { return await this.stmt(sql, ...args).first() as Row | null; }
@@ -93,9 +100,15 @@ export class Workspace {
   async largeAgentPage(page:ReturnType<typeof pageRequest>,key:string,base:Row,query:{select:string;fields:Record<string,string>;from:string;values:unknown[]|(()=>unknown[]);order:string;id:string;at:string;timestamp?:string;versionField?:string}) {
     const timestamp=query.timestamp??'created_at',versionField=query.versionField??(query.fields.version?'version':undefined);
     const values=()=>typeof query.values==='function'?query.values():query.values;
-    // Size at most the requested page plus lookahead in D1. Only compact metadata
-    // crosses this binding; unseen bodies/reports are not hydrated in the Worker.
-    const candidates=await this.all(`SELECT ${query.id} AS id,${query.at} AS ${timestamp},${versionField?query.fields[versionField]:'NULL'} AS version,${agentRowSizeSql(query.fields)} AS payload_bytes ${query.from} ORDER BY ${query.order} LIMIT ?`,...values(),page.limit+1);
+    const revision=versionField?query.fields[versionField]:'NULL',metadataValues=values();
+    // Materialize only authorized IDs/order/revision before processing large text.
+    // LIMIT alone does not bound projection work when eligible rows need sorting.
+    // Both halves share one statement snapshot and one clock/binding set; the
+    // selected exact fetch below checks current access again with fresh values.
+    const candidates=await this.all(`WITH agent_page_candidates AS MATERIALIZED (
+      SELECT ${query.id} AS id,${query.at} AS cursor_at,${revision} AS version ${query.from} ORDER BY ${query.order} LIMIT ?
+      ) SELECT ${query.id} AS id,${query.at} AS ${timestamp},${revision} AS version,${agentRowSizeSql(query.fields)} AS payload_bytes
+      ${query.from} AND ${query.id} IN (SELECT id FROM agent_page_candidates) ORDER BY ${query.order} LIMIT ?`,...metadataValues,page.limit+1,...metadataValues,page.limit+1);
     const selected:Row[]=[];let rowBytes=0;
     for(const candidate of candidates.slice(0,page.limit)) {
       const cursor=selected.length+1<candidates.length?pageCursor(candidate,page,timestamp):null;
@@ -429,6 +442,7 @@ export class Workspace {
     return receipt({id:sid,status,version:(expected as number)+1,updated_at:date});
   }
   async human(action: string, a: Args): Promise<any> {
+    this.assertExpectedOwner(a.expected_owner_id);
     if (['leave_space','remove_member','transfer_ownership'].includes(action)) return this.changeMembership(action,a);
     if (action === 'set_source_state') return this.setSourceState(a);
     if (['create_space','add_agent','add_source'].includes(action)) return this.createResource(action,a);
