@@ -8,11 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { clientRequest, RequestFailure } from '@/lib/client-request';
 import { continueSessionAttempt, retainSessionAttempt, sessionAttempt, type SessionAttempt } from '@/lib/session-recovery';
+import { LoadLifecycle } from '@/lib/load-lifecycle';
 import './session-room.css';
 
 type Session = { id: string; name: string; purpose: string; owner_id: string };
 type View = 'start' | 'join' | null;
 type Bootstrap = { user: { id: string }; spaces: Session[]; pages:{spaces:{next_cursor:string|null}} };
+const sessionLoadMessage=(failure:unknown)=>failure instanceof RequestFailure&&failure.status===0?'Your sessions couldn’t load. Check your connection and retry.':(failure as Error).message;
 
 export default function SessionRoom() {
   const router = useRouter();
@@ -23,7 +25,9 @@ export default function SessionRoom() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionAccountId, setSessionAccountId] = useState<string | null>(null);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [sessionCursor,setSessionCursor]=useState<string|null>(null),paging=useRef(false),pageFocus=useRef<{id:string;trigger:Element|null}|null>(null);
+  const [sessionListError, setSessionListError] = useState('');
+  const [sessionCursor,setSessionCursor]=useState<string|null>(null),pageFocus=useRef<{id:string;trigger:Element|null}|null>(null);
+  const sessionLoads=useRef(new LoadLifecycle()),sessionRetry=useRef<HTMLButtonElement>(null);
   const [name, setName] = useState('');
   const [purpose, setPurpose] = useState('');
   const [code, setCode] = useState('');
@@ -34,8 +38,9 @@ export default function SessionRoom() {
   const bootstrap = useRef<Promise<Bootstrap> | null>(null);
   const running = useRef(false);
   const trigger = useRef<HTMLElement | null>(null);
-  const listRequest = useRef(0);
   const working = busy || navigating;
+
+  useEffect(()=>{const scope=sessionLoads.current;scope.activate();return()=>scope.deactivate();},[]);
 
   useEffect(() => {
     if (!recoveryFocus.current) return;
@@ -56,29 +61,31 @@ export default function SessionRoom() {
 
   async function open(view: 'start' | 'join', event: React.MouseEvent<HTMLButtonElement>) {
     trigger.current = event.currentTarget;
+    sessionLoads.current.invalidate();pageFocus.current=null;setLoadingSessions(false);setSessionListError('');
     setView(view);
     setError('');
     if (view !== 'join') return;
-    const request = ++listRequest.current;
-    setSessions([]); setSessionCursor(null); setSessionAccountId(null);
-    setLoadingSessions(true);
-    try {
-      const account = await loadAccount(true);
-      if (request === listRequest.current){setSessions(account.spaces);setSessionCursor(account.pages.spaces.next_cursor);setSessionAccountId(account.user.id);}
-    } catch (e) {
-      if (request === listRequest.current) setError((e as Error).message);
-    } finally {
-      if (request === listRequest.current) setLoadingSessions(false);
-    }
+    await loadSessions();
+  }
+  async function loadSessions(){
+    if(running.current||navigating)return;
+    const retryTrigger=sessionRetry.current;
+    await sessionLoads.current.load(()=>loadAccount(true),{
+      start:()=>{setSessions([]);setSessionCursor(null);setSessionAccountId(null);setLoadingSessions(true);},
+      success:account=>{if(document.activeElement===retryTrigger)pageFocus.current={id:account.spaces.length?`session-${account.spaces[0].id}`:'invitation-code',trigger:retryTrigger};setSessions(account.spaces);setSessionCursor(account.pages.spaces.next_cursor);setSessionAccountId(account.user.id);setSessionListError('');},
+      failure:failure=>setSessionListError(sessionLoadMessage(failure)),
+      finish:()=>setLoadingSessions(false),
+    });
   }
   useEffect(()=>{if(pageFocus.current){const {id,trigger}=pageFocus.current;if(document.activeElement===trigger||(!trigger?.isConnected&&document.activeElement===document.body))document.getElementById(id)?.focus();pageFocus.current=null;}},[sessions]);
   async function moreSessions(){
-    if(working||loadingSessions||!sessionCursor||!sessionAccountId||paging.current)return;paging.current=true;const request=listRequest.current,trigger=document.activeElement;setLoadingSessions(true);setError('');
-    try{const page=await clientRequest(`/api/workspace?catalog=spaces&cursor=${encodeURIComponent(sessionCursor)}`,undefined,undefined,{expectedOwnerId:sessionAccountId});if(request!==listRequest.current)return;
-      if(!page.next_cursor&&page.items.length&&document.activeElement===trigger)pageFocus.current={id:`session-${page.items[0].id}`,trigger};
-      setSessions(previous=>[...previous,...page.items.filter((item:Session)=>!previous.some(old=>old.id===item.id))]);setSessionCursor(page.next_cursor);
-    }catch(error){if(request===listRequest.current)setError((error as Error).message);}
-    finally{paging.current=false;if(request===listRequest.current)setLoadingSessions(false);}
+    if(working||!sessionCursor||!sessionAccountId)return;const trigger=document.activeElement;
+    await sessionLoads.current.load(()=>clientRequest(`/api/workspace?catalog=spaces&cursor=${encodeURIComponent(sessionCursor)}`,undefined,undefined,{expectedOwnerId:sessionAccountId}),{
+      start:()=>{setLoadingSessions(true);setSessionListError('');},
+      success:page=>{if(!page.next_cursor&&page.items.length&&document.activeElement===trigger)pageFocus.current={id:`session-${page.items[0].id}`,trigger};setSessions(previous=>[...previous,...page.items.filter((item:Session)=>!previous.some(old=>old.id===item.id))]);setSessionCursor(page.next_cursor);},
+      failure:failure=>setSessionListError(sessionLoadMessage(failure)),
+      finish:()=>setLoadingSessions(false),
+    });
   }
 
   async function perform(action: () => Promise<void>) {
@@ -95,7 +102,7 @@ export default function SessionRoom() {
     // Check membership before navigating; the room rechecks access on every read.
     const header=await clientRequest(`/api/workspace?space=${encodeURIComponent(id)}&header=yes`,undefined,undefined,{expectedOwnerId});
     if(header.user.id!==expectedOwnerId)throw new RequestFailure('Your signed-in account changed. Reopen your sessions with this account.',403);
-    listRequest.current++;
+    sessionLoads.current.invalidate();
     setLoadingSessions(false);
     setError('');
     setNavigating(true);
@@ -148,7 +155,8 @@ export default function SessionRoom() {
       const remaining = previous.filter(item => item.key !== attempt.key);
       return active && active.key !== attempt.key ? retainSessionAttempt(remaining, active) : remaining;
     });
-    listRequest.current++;
+    sessionLoads.current.invalidate();
+    setSessionListError('');
     setLoadingSessions(false);
     setView(attempt.view); setError('');
     if (attempt.view === 'start') { setStartAttempt(attempt); setName(attempt.input.name); setPurpose(attempt.input.purpose); }
@@ -171,7 +179,7 @@ export default function SessionRoom() {
       </section>
     </main>
 
-    <Dialog open={view !== null} onOpenChange={value => { if (!value && !running.current && !navigating) { setView(null); listRequest.current++; } }}>
+    <Dialog open={view !== null} onOpenChange={value => { if (!value && !running.current && !navigating) { setView(null); sessionLoads.current.invalidate();setLoadingSessions(false); } }}>
       <DialogContent className="accord-dialog" showCloseButton={!working} onEscapeKeyDown={e => { if (working) e.preventDefault(); }} onPointerDownOutside={e => { if (working) e.preventDefault(); }} onCloseAutoFocus={e => { e.preventDefault(); trigger.current?.focus(); }}>
         <div className="accord-dialog-heading"><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></div>
 
@@ -185,6 +193,7 @@ export default function SessionRoom() {
 
         {view === 'join' && <>
           {loadingSessions && <p className="accord-feedback" role="status">Finding your sessions…</p>}
+          {sessionListError&&<div className="accord-error" role="alert"><p>{sessionListError}</p><Button ref={sessionRetry} type="button" className="accord-button accord-button-secondary" disabled={working} aria-disabled={loadingSessions} onClick={()=>void loadSessions()}>{loadingSessions?'Retrying…':'Retry'}</Button></div>}
           {sessions.length > 0 && <div className="accord-existing" aria-label="Your sessions">
             {sessions.map(item => <Button key={item.id} id={`session-${item.id}`} className="accord-session-row" disabled={working||!sessionAccountId} onClick={() => {if(sessionAccountId)void perform(() => enter(item.id,sessionAccountId));}}>{item.name}</Button>)}
           </div>}
