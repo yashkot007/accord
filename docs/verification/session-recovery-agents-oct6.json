@@ -1,0 +1,654 @@
+{
+  "kind": "synthetic-session-recovery-and-agent-work-evidence",
+  "date": "2026-10-06",
+  "server_version": "0.13.1",
+  "setup_package_version": "0.4.0",
+  "production_capacity_claim": false,
+  "source_hashes": {
+    "lib/workspace.ts": "b841351ac74e89eb929089a7f56f12daa417be6479782a6485f172e680b40bac",
+    "lib/mcp-http.ts": "3198522c4aac3ac597a05d4488612ed241bacdf147ffa4d690a882b2c965eba3",
+    "lib/host.ts": "add1384b0457b1c157224af597c11dcfdda0d6acbf82fbc07f2fbe90df04ec6d",
+    "lib/mcp-admission.ts": "a87b23f580cdcf56b2681b33d0ed17c2914c647bd09b0cdf15c02a3d33675170",
+    "lib/request-body.ts": "7c333b4489fcfe33e3dac80552711c351e3c2f8b737b50716e1b5cefb79e7860",
+    "lib/mcp-diagnostics.ts": "f68ca49d41ef943e0dd93be4d356a83e55ff866811e6fe23eb5354ecb0e297fa",
+    "app/session-room.tsx": "7bc16c60642b2a476026fefbc2ef3b3596d01b0a4de3e4f99a19a795e29e0d72",
+    "app/api/workspace/route.ts": "50e4f3066c9994237e30a748218e9ee53653c5e5433044194d48d09004a3c3dc",
+    "lib/session-recovery.ts": "e1098807d0b44271a1f6aed998821f35ec4236e06778ecd10e8aea8fd06c8ed5",
+    "lib/client-request.ts": "c5cd4a7e1e00bf9a77298f781b42eab3d320b89b8176dc447b504c6884d095c6",
+    "scripts/measure-agent-load.mjs": "863872d42770fcf7175e80fdaa0deb67000f85afafa9e8bb1d307865dd3d82bb",
+    "tests/session-recovery.test.mjs": "3a20a12f092b04b6223d2d49b68db00e64f1a5c863ca969b087af1d77ea97195",
+    "tests/session-owner-guard.test.mjs": "60c23c26729ecee24dd782e1f4a43fc38ba5317e9352fd273a04b2154eff72be",
+    "tests/mcp-diagnostics.test.mjs": "759c1eb5ca5d35d94a77a12a92c916e14c14e5014ee62be93795af078d3f2ca6",
+    "tests/agent-candidate-sizing.test.mjs": "5e0dce440d2a9486dfdf900250894f3e9caf9325866a102201119972c4eadd2e"
+  },
+  "validation": {
+    "tests": 277,
+    "passed": 277,
+    "typescript": true,
+    "deterministic_packages": true,
+    "claude_plugin_and_marketplace_validators": true
+  },
+  "previous_publication": {
+    "source": "5aec3c1dfaeb82e8b60f8bd60f132d4c600b9131",
+    "site_version": 42,
+    "deployment": "appgdep_6ac49f6a3754819189fba8dfe27caa44",
+    "status": "succeeded",
+    "audience": "private owner only"
+  },
+  "candidate_sizing": {
+    "fixture": "Local real SQLite under adverse room ordering",
+    "eligible_rooms": 1001,
+    "requested_limit": 20,
+    "previous_evaluations": 1001,
+    "current_evaluations": 21,
+    "other_full_collections": {
+      "requested_limit": 7,
+      "evaluations": 8
+    },
+    "remaining_work": "Eligible-room metadata scan and ordering remain; no production latency or total rows-read reduction is claimed."
+  },
+  "browser_recovery": {
+    "environment": "Chrome with the real SessionRoom component and real synthetic Workspace/SQLite; next/router replaced by a test-only navigation stub",
+    "before_open": {
+      "initial_spaces": 1,
+      "current_spaces": 2,
+      "create_calls": 2,
+      "header_calls": 1,
+      "request_keys": [
+        "f8ce0dcc-e2fd-4f2a-8f8e-99c9b0c55043",
+        "f8ce0dcc-e2fd-4f2a-8f8e-99c9b0c55043"
+      ],
+      "names": [
+        "Synthetic recovery check",
+        "Synthetic recovery check"
+      ],
+      "source_component": "app/session-room.tsx",
+      "source_hashes": {
+        "app/session-room.tsx": "6bb1676d3ceda5cf75c2bc34357c19334014fba2af479af6c76b12cbfd602461",
+        "lib/session-recovery.ts": "e1098807d0b44271a1f6aed998821f35ec4236e06778ecd10e8aea8fd06c8ed5",
+        "lib/client-request.ts": "c5cd4a7e1e00bf9a77298f781b42eab3d320b89b8176dc447b504c6884d095c6",
+        "lib/workspace.ts": "b841351ac74e89eb929089a7f56f12daa417be6479782a6485f172e680b40bac"
+      },
+      "database": "isolated synthetic SQLite",
+      "router": "test-only navigation stub"
+    },
+    "after_open": {
+      "initial_spaces": 1,
+      "current_spaces": 2,
+      "create_calls": 2,
+      "header_calls": 2,
+      "request_keys": [
+        "f8ce0dcc-e2fd-4f2a-8f8e-99c9b0c55043",
+        "f8ce0dcc-e2fd-4f2a-8f8e-99c9b0c55043"
+      ],
+      "names": [
+        "Synthetic recovery check",
+        "Synthetic recovery check"
+      ],
+      "source_component": "app/session-room.tsx",
+      "source_hashes": {
+        "app/session-room.tsx": "6bb1676d3ceda5cf75c2bc34357c19334014fba2af479af6c76b12cbfd602461",
+        "lib/session-recovery.ts": "e1098807d0b44271a1f6aed998821f35ec4236e06778ecd10e8aea8fd06c8ed5",
+        "lib/client-request.ts": "c5cd4a7e1e00bf9a77298f781b42eab3d320b89b8176dc447b504c6884d095c6",
+        "lib/workspace.ts": "b841351ac74e89eb929089a7f56f12daa417be6479782a6485f172e680b40bac"
+      },
+      "database": "isolated synthetic SQLite",
+      "router": "test-only navigation stub"
+    },
+    "checks": [
+      "Exactly two entrance buttons",
+      "Draft frozen after known save / failed room opening",
+      "Choosing another blanks fields and focuses name without dispatch",
+      "Earlier attempt resumes exact inputs and focuses retry without dispatch",
+      "Opening saved room changes only header count and no create count"
+    ],
+    "limitation": "Chrome automatically retransmitted the socket-dropped POST with the same request key before the UI observed the injected header error. The UI verified known-save recovery; ambiguous save recovery and account-switch races are covered separately by real client/HTTP route tests. Source hashes identify the browser-tested code before a final wording-only correction to the alternative explanation. Attempts persist only in this tab, not across reload."
+  },
+  "diagnostics": {
+    "environment": "Deterministic real MCP handler tests",
+    "tests": 17,
+    "privacy_canaries": true,
+    "business_error_http_200": true,
+    "overload_and_body_deadline": true,
+    "serialization_and_broken_sink_isolation": true,
+    "stress_completions": 6000,
+    "default_samples": {
+      "success": 2,
+      "failure": 8,
+      "overload": 4
+    },
+    "bucket_ms": 60000,
+    "summary": "Next completion after elapsed window; no timer or background flush",
+    "live_delivery": "Awaiting subsequent publication check; local tests do not prove production collection, retention, alerting or incident handling."
+  },
+  "worker_run": {
+    "raw_report": "/private/tmp/accord-recovery-agent-load-oct6.json",
+    "raw_report_sha256": "40630c7c1f42d50eb6db4e129922cd26279385311d1a838214ca3b093b185d81",
+    "created_at": "2026-10-06T07:39:03.864Z",
+    "source_mode": "working tree",
+    "compiled_worker_sha256": "dc2782dedf64e94a3a8f7e4dd16ce95851a470374aab4fe83c4aba0c77b4436f",
+    "environment": {
+      "node": "v24.10.0",
+      "miniflare": "4.20260515.0",
+      "backend": "Miniflare workerd with local D1",
+      "binding": "fresh synthetic-only DB",
+      "external_worker_fetch": "disabled",
+      "migrations": 15
+    },
+    "configuration": {
+      "rows": 1000,
+      "reads": 90,
+      "writes": 12,
+      "concurrency": [
+        1,
+        2
+      ],
+      "revision": null,
+      "output": "/private/tmp/accord-recovery-agent-load-oct6.json",
+      "contactOnly": false,
+      "inboxProjection": "summary",
+      "clientHeavyCap": 2,
+      "checkOnly": false
+    },
+    "fixture": {
+      "rows_per_collection": 1000,
+      "members": 1002,
+      "agents": 1002,
+      "sources": 1000,
+      "tasks": 1000,
+      "changes": 1000,
+      "grants": 1001,
+      "accepted_context": 500,
+      "actionable_inbox": 500,
+      "source_content_characters": 19924,
+      "task_body_characters": 8000,
+      "adopted_context_characters": 5000
+    },
+    "scenarios": [
+      {
+        "concurrency": 1,
+        "client_heavy_cap": 2,
+        "peak_inflight_requests": 1,
+        "elapsed_ms": 795.4715000000001,
+        "requests_per_second": 173.4820166404453,
+        "requests": 138,
+        "p50_ms": 5.052916000000096,
+        "p95_ms": 7.295458000000053,
+        "payload_p50_bytes": 36422,
+        "payload_p95_bytes": 335396,
+        "statements": 1051,
+        "statements_p50": 8,
+        "statements_p95": 18,
+        "round_trips": 1003,
+        "write_statements": 73,
+        "agent_update_statements": 1,
+        "agent_rows_changed": 1,
+        "observed_rows_read": 25724,
+        "rows_read_p50": 192,
+        "rows_read_p95": 349,
+        "observed_rows_written": 205,
+        "request_outcomes": {
+          "admitted": 138,
+          "rejected": 0,
+          "failed": 0
+        },
+        "operations": {
+          "read_inbox": {
+            "requests": 30,
+            "p50_ms": 2.7428329999997914,
+            "p95_ms": 5.1082500000002256,
+            "payload_p50_bytes": 36422,
+            "payload_p95_bytes": 36422,
+            "statements": 60,
+            "statements_p50": 2,
+            "statements_p95": 2,
+            "round_trips": 60,
+            "write_statements": 0,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 5760,
+            "rows_read_p50": 192,
+            "rows_read_p95": 192,
+            "observed_rows_written": 0
+          },
+          "send_instruction": {
+            "requests": 24,
+            "p50_ms": 3.549167000000125,
+            "p95_ms": 6.355208000000175,
+            "payload_p50_bytes": 230,
+            "payload_p95_bytes": 230,
+            "statements": 217,
+            "statements_p50": 8,
+            "statements_p95": 10,
+            "round_trips": 205,
+            "write_statements": 25,
+            "agent_update_statements": 1,
+            "agent_rows_changed": 1,
+            "observed_rows_read": 386,
+            "rows_read_p50": 13,
+            "rows_read_p95": 19,
+            "observed_rows_written": 109
+          },
+          "read_space": {
+            "requests": 30,
+            "p50_ms": 5.477540999999974,
+            "p95_ms": 7.060833999999886,
+            "payload_p50_bytes": 93306,
+            "payload_p95_bytes": 93306,
+            "statements": 300,
+            "statements_p50": 10,
+            "statements_p95": 10,
+            "round_trips": 300,
+            "write_statements": 0,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 8460,
+            "rows_read_p50": 282,
+            "rows_read_p95": 282,
+            "observed_rows_written": 0
+          },
+          "read_context": {
+            "requests": 30,
+            "p50_ms": 6.086791000000176,
+            "p95_ms": 8.37133300000005,
+            "payload_p50_bytes": 335396,
+            "payload_p95_bytes": 335396,
+            "statements": 90,
+            "statements_p50": 3,
+            "statements_p95": 3,
+            "round_trips": 90,
+            "write_statements": 0,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 10470,
+            "rows_read_p50": 349,
+            "rows_read_p95": 349,
+            "observed_rows_written": 0
+          },
+          "report_progress": {
+            "requests": 24,
+            "p50_ms": 4.239958000000115,
+            "p95_ms": 6.0711670000000595,
+            "payload_p50_bytes": 626,
+            "payload_p95_bytes": 626,
+            "statements": 384,
+            "statements_p50": 14,
+            "statements_p95": 18,
+            "round_trips": 348,
+            "write_statements": 48,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 648,
+            "rows_read_p50": 22,
+            "rows_read_p95": 32,
+            "observed_rows_written": 96
+          }
+        },
+        "correctness": {
+          "unique_sends": 12,
+          "unique_reports": 12,
+          "duplicate_receipts_equal": true,
+          "one_event_per_write": true
+        }
+      },
+      {
+        "concurrency": 2,
+        "client_heavy_cap": 2,
+        "peak_inflight_requests": 2,
+        "elapsed_ms": 563.4510839999998,
+        "requests_per_second": 244.9192199974542,
+        "requests": 138,
+        "p50_ms": 6.804957999999715,
+        "p95_ms": 9.904249999999593,
+        "payload_p50_bytes": 36422,
+        "payload_p95_bytes": 335396,
+        "statements": 1050,
+        "statements_p50": 8,
+        "statements_p95": 18,
+        "round_trips": 1002,
+        "write_statements": 72,
+        "agent_update_statements": 0,
+        "agent_rows_changed": 0,
+        "observed_rows_read": 25722,
+        "rows_read_p50": 192,
+        "rows_read_p95": 349,
+        "observed_rows_written": 204,
+        "request_outcomes": {
+          "admitted": 138,
+          "rejected": 0,
+          "failed": 0
+        },
+        "operations": {
+          "read_inbox": {
+            "requests": 30,
+            "p50_ms": 6.418791999999939,
+            "p95_ms": 9.670834000000013,
+            "payload_p50_bytes": 36422,
+            "payload_p95_bytes": 36422,
+            "statements": 60,
+            "statements_p50": 2,
+            "statements_p95": 2,
+            "round_trips": 60,
+            "write_statements": 0,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 5760,
+            "rows_read_p50": 192,
+            "rows_read_p95": 192,
+            "observed_rows_written": 0
+          },
+          "send_instruction": {
+            "requests": 24,
+            "p50_ms": 4.937583000000359,
+            "p95_ms": 7.603875000000244,
+            "payload_p50_bytes": 230,
+            "payload_p95_bytes": 230,
+            "statements": 216,
+            "statements_p50": 8,
+            "statements_p95": 10,
+            "round_trips": 204,
+            "write_statements": 24,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 384,
+            "rows_read_p50": 13,
+            "rows_read_p95": 19,
+            "observed_rows_written": 108
+          },
+          "read_space": {
+            "requests": 30,
+            "p50_ms": 6.0183750000001055,
+            "p95_ms": 9.071124999999938,
+            "payload_p50_bytes": 94076,
+            "payload_p95_bytes": 94076,
+            "statements": 300,
+            "statements_p50": 10,
+            "statements_p95": 10,
+            "round_trips": 300,
+            "write_statements": 0,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 8460,
+            "rows_read_p50": 282,
+            "rows_read_p95": 282,
+            "observed_rows_written": 0
+          },
+          "read_context": {
+            "requests": 30,
+            "p50_ms": 8.409874999999829,
+            "p95_ms": 11.903792000000067,
+            "payload_p50_bytes": 335396,
+            "payload_p95_bytes": 335396,
+            "statements": 90,
+            "statements_p50": 3,
+            "statements_p95": 3,
+            "round_trips": 90,
+            "write_statements": 0,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 10470,
+            "rows_read_p50": 349,
+            "rows_read_p95": 349,
+            "observed_rows_written": 0
+          },
+          "report_progress": {
+            "requests": 24,
+            "p50_ms": 7.49291600000015,
+            "p95_ms": 17.360208000000057,
+            "payload_p50_bytes": 626,
+            "payload_p95_bytes": 626,
+            "statements": 384,
+            "statements_p50": 14,
+            "statements_p95": 18,
+            "round_trips": 348,
+            "write_statements": 48,
+            "agent_update_statements": 0,
+            "agent_rows_changed": 0,
+            "observed_rows_read": 648,
+            "rows_read_p50": 22,
+            "rows_read_p95": 32,
+            "observed_rows_written": 96
+          }
+        },
+        "correctness": {
+          "unique_sends": 12,
+          "unique_reports": 12,
+          "duplicate_receipts_equal": true,
+          "one_event_per_write": true
+        }
+      }
+    ],
+    "admission": {
+      "passed": true,
+      "observed": {
+        "limits": {
+          "bodies": 16,
+          "tools": 12,
+          "perAccount": 3,
+          "heavyReads": 2,
+          "bodyTimeoutMs": 5000
+        },
+        "usage": {
+          "bodies": 0,
+          "tools": 0,
+          "heavyReads": 0,
+          "accounts": 0
+        },
+        "peaks": {
+          "bodies": 16,
+          "tools": 12,
+          "heavyReads": 2,
+          "accounts": 12,
+          "perAccount": 3
+        },
+        "rejected": {
+          "body": 1,
+          "tool": 2,
+          "account": 2
+        }
+      },
+      "counts": {
+        "requests": 52,
+        "admitted": 46,
+        "rejected": 5,
+        "timed_out": 1
+      },
+      "latencies": {
+        "admitted_with_synthetic_gates": {
+          "samples": 46,
+          "p50_ms": 1,
+          "p95_ms": 7
+        },
+        "rejected": {
+          "samples": 5,
+          "p50_ms": 0,
+          "p95_ms": 1
+        },
+        "timed_out_upload": {
+          "samples": 1,
+          "p50_ms": 5002,
+          "p95_ms": 5002
+        }
+      },
+      "notes": [
+        "Uses real default per-isolate guard; claim/release instrumentation delegates unchanged methods and limits.",
+        "Held admitted work is synthetic gating for deterministic occupancy, excluded from ordinary workload latency.",
+        "Individual burst timings run the real handler directly inside Workerd; they exclude the outer Miniflare HTTP bridge.",
+        "All rejections are retained. No server or automatic client replay.",
+        "Per-account rejection resolves fresh synthetic identity; this resolver uses no database. Zero SQL here does not claim all production identity resolvers are database-free.",
+        "Discovery succeeds under tool/account/heavy saturation. Body saturation rejects discovery promptly429, then discovery succeeds after body slots release."
+      ]
+    },
+    "unicode_pages": {
+      "passed": true,
+      "fixture": {
+        "agent_id": "unicode-recipient",
+        "tasks": 100,
+        "context": 100,
+        "task_history": 100,
+        "decision_history": 100,
+        "characters": {
+          "body": 8000,
+          "feedback": 8000,
+          "adopted": 5000,
+          "reason": 3000,
+          "note": 2000
+        },
+        "bytes_per_cjk_character": 3
+      },
+      "maximum_response_bytes": 1048576,
+      "complete_untruncated_details": true,
+      "note": "Separate recipient and data added after timed workloads. All standard maximum CJK fields, exact details and histories tested outside ordinary latency measurements.",
+      "traversals": {
+        "inbox": {
+          "complete_records": 100,
+          "pages": 12,
+          "items_per_page": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            1
+          ],
+          "max_response_bytes": 872780,
+          "requests": 12,
+          "p50_ms": 19.675333000001046,
+          "p95_ms": 27.447666000000027,
+          "payload_p50_bytes": 872776,
+          "payload_p95_bytes": 872780,
+          "statements": 37,
+          "statements_p50": 3,
+          "statements_p95": 4,
+          "round_trips": 37,
+          "write_statements": 1,
+          "agent_update_statements": 1,
+          "agent_rows_changed": 1,
+          "observed_rows_read": 13034,
+          "rows_read_p50": 1029,
+          "rows_read_p95": 1787,
+          "observed_rows_written": 1
+        },
+        "context": {
+          "complete_records": 100,
+          "pages": 6,
+          "items_per_page": [
+            18,
+            18,
+            18,
+            18,
+            18,
+            10
+          ],
+          "max_response_bytes": 877514,
+          "requests": 6,
+          "p50_ms": 19.647665999998935,
+          "p95_ms": 22.96662500000093,
+          "payload_p50_bytes": 877510,
+          "payload_p95_bytes": 877514,
+          "statements": 18,
+          "statements_p50": 3,
+          "statements_p95": 3,
+          "round_trips": 18,
+          "write_statements": 0,
+          "agent_update_statements": 0,
+          "agent_rows_changed": 0,
+          "observed_rows_read": 5040,
+          "rows_read_p50": 776,
+          "rows_read_p95": 1208,
+          "observed_rows_written": 0
+        },
+        "task_history": {
+          "complete_records": 100,
+          "pages": 7,
+          "items_per_page": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            4
+          ],
+          "max_response_bytes": 875968,
+          "requests": 7,
+          "p50_ms": 28.332374999999956,
+          "p95_ms": 32.97587500000009,
+          "payload_p50_bytes": 875968,
+          "payload_p95_bytes": 875968,
+          "statements": 83,
+          "statements_p50": 12,
+          "statements_p95": 12,
+          "round_trips": 83,
+          "write_statements": 0,
+          "agent_update_statements": 0,
+          "agent_rows_changed": 0,
+          "observed_rows_read": 2457,
+          "rows_read_p50": 358,
+          "rows_read_p95": 597,
+          "observed_rows_written": 0
+        },
+        "decision_history": {
+          "complete_records": 100,
+          "pages": 6,
+          "items_per_page": [
+            18,
+            18,
+            18,
+            18,
+            18,
+            10
+          ],
+          "max_response_bytes": 878016,
+          "requests": 6,
+          "p50_ms": 27.834207999998398,
+          "p95_ms": 34.937040999999226,
+          "payload_p50_bytes": 878016,
+          "payload_p95_bytes": 878016,
+          "statements": 71,
+          "statements_p50": 12,
+          "statements_p95": 12,
+          "round_trips": 71,
+          "write_statements": 0,
+          "agent_update_statements": 0,
+          "agent_rows_changed": 0,
+          "observed_rows_read": 1823,
+          "rows_read_p50": 272,
+          "rows_read_p95": 487,
+          "observed_rows_written": 0
+        }
+      }
+    },
+    "request_outcomes": {
+      "admitted": 439,
+      "rejected": 0,
+      "failed": 0
+    },
+    "correctness": {
+      "pagination": "Complete unique cursor walks match seeded actionable inbox, accepted context, and sources",
+      "mcp_text_matches_structured_content": true
+    },
+    "limitations": [
+      "Local timings include asynchronous Miniflare dispatchFetch bridge and response serialization. They do not establish production capacity.",
+      "No production traffic, identities, tokens, deployment, or remote bindings. Worker external fetches are rejected.",
+      "Successful runs dispose local runtimes and remove scratch storage. Emergency workload/disposal deadlines terminate the process and may leave synthetic scratch storage; its path is printed.",
+      "Auth is replaced by an explicit synthetic-only role selector in this isolated harness. Production auth, edge network, cold starts, billing, remote D1 quotas, and geographic replication are unmeasured.",
+      "Query counts are exact application statement executions. round_trips count binding calls and batch submissions, not production network hops.",
+      "To expose actual D1 metadata, the instrumentation executes first() SQL with all() and projects the first row. This preserves the tested Workspace calls but includes all() result materialization in timings.",
+      "Payload bytes count the complete JSON-RPC response body; MCP text plus structuredContent duplicate record data.",
+      "Runs use one local D1 database; later scenarios include completed synthetic writes from earlier scenarios.",
+      "Ordinary admitted workload uses a local caller queue, global concurrency1/2 and client heavy cap2; latency excludes both caller queues and includes the full response body read. Server admission is exercised unchanged. Overload samples and their latency are reported separately; no rejected or failed response is silently dropped or retried. Percentiles use nearest rank; ten-request contact p95 is its maximum and includes its first request."
+    ]
+  },
+  "remaining_gates": [
+    "Owner POC acceptance and two-person repeat-use evidence",
+    "Native Claude/Grok/Muse OAuth exchanges",
+    "Production capacity, distributed rate policy, operational recovery and alerts"
+  ]
+}

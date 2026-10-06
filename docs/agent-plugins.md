@@ -56,3 +56,9 @@ Updated packages describe shorter complete-text pages and HTTP 429 retry behavio
 Human setup retains the same minimal flow. Clipboard copy states now distinguish waiting, copied and manual fallback; stale or failed operations cannot retain an earlier Copied confirmation. Current build, workload and live-browser gates are tracked in the quality plan.
 
 This local revision passed 240 tests, TypeScript, reproducible package checks and both installed Claude validators. Four isolated Workerd/local-D1 measurements passed, including explicit overload handling and complete Unicode pages; [source hashes and measured limits](verification/agent-bounds-oct6.json) identify the tested implementation. Agent routing previews now direct clients to exact guidance readers before use. These results do not establish native provider authorization or marketplace acceptance.
+
+## MCP 0.13.1 / packages 0.4.0 checkpoint
+
+The shared service adds candidate-first text sizing and bounded private diagnostics without changing agent tools, schemas or setup choices. Package archives and tool references were regenerated for server 0.13.1; the installation format remains 0.4.0. `X-Accord-Request-Reference` is a best-effort server diagnostic reference, independent of the caller’s original request ID or mutation receipt key. Preserve the original arguments/keys on retry; a new diagnostic reference is not a new operation.
+
+277 local tests, TypeScript, deterministic archive checks and installed Claude validators passed. The [new evidence](verification/session-recovery-agents-oct6.json) includes one fresh isolated Workerd/D1 workload and human session-recovery checks. Native Claude, Grok Bot and Muse authorization/exchanges and marketplace acceptance remain unverified.
