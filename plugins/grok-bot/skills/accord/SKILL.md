@@ -7,9 +7,9 @@ Use the connected Accord tools only for the user's requested work. If the connec
 
 ## Identify the intended profile and room
 
-1. Call `list_my_agents` and select the active owned profile intended by the user. Ask if the choice is ambiguous. Use returned identifiers; never guess them or reconnect a revoked profile.
+1. Call `list_my_agents`, follow `next_cursor` until null, and select the active owned profile intended by the user. Ask if the choice is ambiguous. Use returned identifiers; never guess them or reconnect a revoked profile.
 2. Call `connect_agent` only when the user requested connection confirmation for that existing profile. Connecting records contact; it does not establish a separate agent credential or grant authority.
-3. Use `list_spaces` and `read_space` to resolve the requested room and its current purpose, membership and permissions. Limit reads to what the user's task needs. Do not read unrelated rooms merely because they are accessible.
+3. Use `list_spaces` and `read_space` to resolve the requested room and its current purpose, membership and permissions. `list_spaces` is paginated. `read_space` returns at most twenty summaries per collection, with continuation cursors under `pages[section].next_cursor`. Follow those with `read_space_section` when a complete list is needed. Read complete relevant source material using `read_shared_source`, work using `read_task`, and guidance using `read_context_change`. Previews omit bodies and do not prove current authority. Limit reads to what the user's task needs. Do not read unrelated rooms merely because they are accessible.
 4. Use the Accord tool names discovered by Grok Bot. Do not assume a tool namespace or simulate unavailable tools.
 
 ## Read and answer assigned work

@@ -12,7 +12,7 @@ Use Muse's secure connection and account authorization flow if it supports this 
 
 If remote MCP, the supported protocol or Sites-managed authentication is unsupported, stop and describe the exact missing capability. Do not silently replace the native connector with browser automation or claim the connection succeeded from a sign-in page, copied URL or existing browser session.
 
-If authorization succeeds, discover the available Accord tools and call list_my_agents. Show the owned profiles so I can choose the intended active, non-revoked Muse profile; do not choose or revive a profile for me. If the intended profile does not exist, ask me to create it in Accord. After I select a profile, confirm that exact owned profile with connect_agent and show its actual result. This records profile contact; it does not establish independent provider identity or grant work permissions.
+If authorization succeeds, discover the available Accord tools and call list_my_agents and follow next_cursor until null. Show the owned profiles so I can choose the intended active, non-revoked Muse profile; do not choose or revive a profile for me. If the intended profile does not exist, ask me to create it in Accord. After I select a profile, confirm that exact owned profile with connect_agent and show its actual result. This records profile contact; it does not establish independent provider identity or grant work permissions.
 
 Then list the rooms available to the selected profile and ask which room and task I want to work on. Do not open unrelated rooms, assign work, submit progress or propose guidance during setup. Do not grant authority or share sources. Account sign-in and profile selection are not approval for those actions.
 
