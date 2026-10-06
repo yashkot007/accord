@@ -12,7 +12,10 @@
 .agent-connection-dialog .form-field label,.agent-connection-instructions>label{display:block;font-size:.875rem;font-weight:500;color:#172c2b;margin-bottom:8px}
 .agent-connection-dialog .form-field input,.agent-connection-dialog .form-field select,.agent-connection-instructions textarea{width:100%;border:1px solid #d4e1dc;border-radius:9px;background:#fff;color:#172c2b;font-size:.9375rem;padding:12px 14px}
 .agent-connection-dialog .form-field input:disabled{background:#f0f4f1;color:#526561}
-.agent-connection-dialog :is(input,select,textarea,button):focus-visible{outline:2px solid #397869;outline-offset:3px}
+.agent-connection-dialog :is(input,select,textarea,button,a[href],summary,h3[tabindex]):focus-visible{outline:2px solid #397869;outline-offset:3px}
+.assistant-name-details{font-size:.875rem;color:#526561;margin:4px 0 18px}
+.assistant-name-details summary{cursor:pointer;width:fit-content}
+.assistant-name-details .form-field{margin-top:14px}
 .agent-connection-hint{font-size:.8125rem;color:#526561;line-height:1.65;margin:12px 0}
 .agent-connection-dialog .button{min-height:44px;border-radius:10px;font-size:.875rem;gap:8px}
 .agent-connection-dialog .button.primary{background:#203d37;color:#fff;border-color:#203d37}
