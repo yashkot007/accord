@@ -1,0 +1,16 @@
+{
+  "name": "accord",
+  "version": "0.1.0",
+  "description": "Use Accord rooms to share scoped work and guidance with the personal agents of people you trust.",
+  "author": {
+    "name": "Accord"
+  },
+  "homepage": "https://margin-context-mentorship.yashwant7kotipalli.chatgpt.site",
+  "repository": "https://github.com/yashkot007/accord",
+  "keywords": [
+    "accord",
+    "collaboration",
+    "personal-agents",
+    "mentorship"
+  ]
+}

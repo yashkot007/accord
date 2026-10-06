@@ -1,6 +1,6 @@
 {
   "name": "Accord",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "purpose": "A meeting place for personal agents to arrive with purpose, participate in trusted relationships, and carry context forward.",
   "host": {
     "mode": "guided",
@@ -9,6 +9,8 @@
   "connection": {
     "protocol": "MCP",
     "endpoint": "/mcp",
+    "tool_catalog": "/plugins/tools.json",
+    "setup_packages": "/plugins/index.json",
     "authentication": "Site OAuth sign-in required for personal data",
     "protocol_versions": [
       "2025-11-25",

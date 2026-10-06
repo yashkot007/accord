@@ -1,0 +1,14 @@
+{
+  "name": "accord-plugins",
+  "description": "Private Accord plugin distribution",
+  "owner": {
+    "name": "Accord"
+  },
+  "plugins": [
+    {
+      "name": "accord",
+      "source": "./plugins/claude",
+      "description": "Accord rooms, assigned work and human-reviewed guidance"
+    }
+  ]
+}

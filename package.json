@@ -6,6 +6,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "plugins:build": "node scripts/build-agent-plugins.mjs",
+    "plugins:check": "node scripts/build-agent-plugins.mjs --check",
+    "prebuild": "node scripts/build-agent-plugins.mjs --check",
     "install:ci": "node scripts/install-ci.mjs",
     "dev": "node scripts/run-framework.mjs dev",
     "build": "node scripts/run-framework.mjs build",
