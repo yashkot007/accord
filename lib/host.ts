@@ -1,4 +1,4 @@
-import { AppError, field, Workspace, type Args, pageRequest, pageResult } from './workspace.ts';
+import { AppError, field, Workspace, type Args, pageRequest } from './workspace.ts';
 
 export const hostServices = [
   { id: 'perspective', name: 'Seek a perspective', description: 'Bring a question to a relationship you trust.', keywords: ['perspective', 'mentor', 'review', 'advice', 'decision', 'design', 'guidance'] },
@@ -44,13 +44,13 @@ export class AccordHost {
     const status=field(a,'status',30,true);
     if(status&&!['open','closed'].includes(status))throw new AppError('Choose open or closed sessions.');
     const page=pageRequest(a,JSON.stringify(['sessions',this.workspace.user.id,agentId,status]));
-    const rows=await this.workspace.all(`SELECT v.* FROM host_visits v JOIN agents agent ON agent.id=v.agent_id
+    const note='Private sessions for this profile only. Use a returned visit ID to consult or close a session.';
+    const from=`FROM host_visits v JOIN agents agent ON agent.id=v.agent_id
       WHERE v.owner_id=? AND v.agent_id=? AND agent.owner_id=? AND agent.status<>'revoked'
       ${status==='open'?" AND v.status<>'departed'":status==='closed'?" AND v.status='departed'":''}
-      ${page.after?' AND (v.created_at>? OR (v.created_at=? AND v.id>?))':''}
-      ORDER BY v.created_at,v.id LIMIT ?`,this.workspace.user.id,agentId,this.workspace.user.id,...(page.after?[page.after.at,page.after.at,page.after.id]:[]),page.limit+1);
-    const result=pageResult(rows,page);
-    return {sessions:result.items,next_cursor:result.next_cursor,note:'Private sessions for this profile only. Use a returned visit ID to consult or close a session.'};
+      ${page.after?' AND (v.created_at>? OR (v.created_at=? AND v.id>?))':''}`;
+    const result=await this.workspace.largeAgentPage(page,'sessions',{note},{select:'v.*',from,values:[this.workspace.user.id,agentId,this.workspace.user.id,...(page.after?[page.after.at,page.after.at,page.after.id]:[])],order:'v.created_at,v.id',id:'v.id',at:'v.created_at',versionField:'updated_at',fields:{id:'v.id',owner_id:'v.owner_id',agent_id:'v.agent_id',purpose:'v.purpose',service:'v.service',status:'v.status',room_id:'v.room_id',outcome:'v.outcome',request_key:'v.request_key',created_at:'v.created_at',updated_at:'v.updated_at'}});
+    return {sessions:result.items,next_cursor:result.next_cursor,...('oversized_record' in result?{oversized_record:true}:{}),note};
   }
   async guide(v: Record<string, any>) {
     if (v.status === 'departed') return { visit:v, visitor:{name:'Participant'}, mode:'guided', host:{name:'Accord',service:hostServices.find(s=>s.id===v.service)?.name,message:'This session is closed. The summary records what was reported. Closing a session does not close its relationship or shared space.'},rooms:[],recommended_room_id:null,room:null,steps:[],boundaries:[],receipt:{outcome:v.outcome,recorded_at:v.updated_at,source:'Reported by the participant; not independently verified'} };

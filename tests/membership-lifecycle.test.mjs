@@ -120,11 +120,18 @@ test('space reads cannot return shared data when membership disappears during co
  await assert.rejects(f.b.readSpace(f.space.id),e=>e.status===403);f.db.sqlite.close();
 });
 
-test('agent context checks current ownership and active status at query boundary',async()=>{
+test('agent context fails closed when current access changes between sizing and detail queries',async()=>{
  for(const change of ['disconnect','owner','attachment']){
- const f=await pair();await evidence(f);const original=f.b.all.bind(f.b);
- f.b.all=async(sql,...values)=>{if(sql.includes('c.adopted AS instruction')){if(change==='disconnect')f.db.sqlite.prepare("UPDATE agents SET status='revoked' WHERE id=?").run(f.recipient.id);else if(change==='owner')f.db.sqlite.prepare('UPDATE agents SET owner_id=? WHERE id=?').run(f.outsider.user.id,f.recipient.id);else f.db.sqlite.prepare('DELETE FROM space_agents WHERE space_id=? AND agent_id=?').run(f.space.id,f.recipient.id);}return original(sql,...values);};
- assert.equal((await f.b.agentTool('read_context',{agent_id:f.recipient.id})).context.length,0);f.db.sqlite.close();}
+ const f=await pair();await evidence(f);const original=f.b.all.bind(f.b);let changed=false,contactAtBoundary;
+ const contact=()=>f.db.sqlite.prepare('SELECT contact_version,last_seen_at FROM agents WHERE id=?').get(f.recipient.id);
+ f.b.all=async(sql,...values)=>{if(!changed&&sql.includes('c.adopted AS instruction')){changed=true;contactAtBoundary=contact();if(change==='disconnect')f.db.sqlite.prepare("UPDATE agents SET status='revoked' WHERE id=?").run(f.recipient.id);else if(change==='owner')f.db.sqlite.prepare('UPDATE agents SET owner_id=? WHERE id=?').run(f.outsider.user.id,f.recipient.id);else f.db.sqlite.prepare('DELETE FROM space_agents WHERE space_id=? AND agent_id=?').run(f.space.id,f.recipient.id);}return original(sql,...values);};
+ // Sizing already selected this record. A recoverable conflict prevents an empty
+ // page from skipping it while ensuring the second query returns no private data.
+ await assert.rejects(f.b.agentTool('read_context',{agent_id:f.recipient.id}),error=>error.status===409&&/records or their access changed/.test(error.message));
+ assert.equal(changed,true);assert.deepEqual(contact(),contactAtBoundary);
+ if(change==='attachment'){const retry=await f.b.agentTool('read_context',{agent_id:f.recipient.id});assert.deepEqual(retry.context,[]);assert.equal(retry.next_cursor,null);}
+ else await assert.rejects(f.b.agentTool('read_context',{agent_id:f.recipient.id}),error=>error.status===403);
+ assert.deepEqual(contact(),contactAtBoundary);f.db.sqlite.close();}
 });
 
 test('membership preview is authorized, pins the reviewed instance, and rejects concurrent changes',async()=>{
