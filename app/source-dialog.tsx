@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
 import {clientRequest,RequestFailure} from '@/lib/client-request';
+import {restoreDialogFocus} from '@/lib/dialog-focus';
 type Row=Record<string,any>;
 
 export function SourceDialog({sourceId,onClose,onSaved}:{sourceId:string;onClose:()=>void;onSaved:()=>Promise<void>}) {
@@ -13,7 +14,7 @@ export function SourceDialog({sourceId,onClose,onSaved}:{sourceId:string;onClose
     try{setSource(await clientRequest(`/api/workspace?source=${encodeURIComponent(sourceId)}`));setMustReview(false);}
     catch(e){setSource(null);setError((e as Error).message);}finally{setLoading(false);}
   }
-  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;dialog.current?.showModal();void load();return()=>{const target=previous?.isConnected?previous:document.getElementById(`source-${sourceId}`);target?.focus();};},[]);
+  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;dialog.current?.showModal();void load();return()=>{restoreDialogFocus(previous,`source-${sourceId}`);};},[]);
   async function save(){
     if(!source||!confirmation||saving||loading||mustReview)return;
     setSaving(true);setError('');setNotice('');

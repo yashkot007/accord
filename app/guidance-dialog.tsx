@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
 import {clientRequest,RequestFailure} from '@/lib/client-request';
+import {restoreDialogFocus} from '@/lib/dialog-focus';
 type Row=Record<string,any>;
 const labels:Record<string,string>={accepted:'Accepted',declined:'Declined',pending:'Open for review'};
 const stamp=(value:string)=>new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
@@ -24,7 +25,7 @@ export function GuidanceDialog({changeId,review,onClose,onSaved}:{changeId:strin
       if(refreshReview){setMustReview(false);retry.current=null;}
     }catch(e){setError((e as Error).message);}finally{setLoading(false);}
   }
-  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;dialog.current?.showModal();void load();return()=>{const target=previous?.isConnected?previous:document.getElementById(`guidance-history-${changeId}`);target?.focus();};},[]);
+  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;dialog.current?.showModal();void load();return()=>{restoreDialogFocus(previous,`guidance-history-${changeId}`);};},[]);
   async function submit(event:React.FormEvent){
     event.preventDefault();if(!data||!baseline||saving||loading||mustReview||!decision)return;
     const args={change_id:changeId,expected_version:baseline.version,expected_source_version:decision==='accepted'?baseline.sourceVersion:undefined,decision,instruction:decision==='accepted'?instruction:undefined,decision_note:note};

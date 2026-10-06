@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import './session-room.css';
 
 type Session = { id: string; name: string; purpose: string; owner_id: string };
 type View = 'start' | 'join' | null;
-type Bootstrap = { spaces: Session[] };
+type Bootstrap = { spaces: Session[]; pages:{spaces:{next_cursor:string|null}} };
 
 export default function SessionRoom() {
   const router = useRouter();
@@ -21,6 +21,7 @@ export default function SessionRoom() {
   const [error, setError] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionCursor,setSessionCursor]=useState<string|null>(null),paging=useRef(false),pageFocus=useRef<{id:string;trigger:Element|null}|null>(null);
   const [name, setName] = useState('');
   const [purpose, setPurpose] = useState('');
   const [code, setCode] = useState('');
@@ -52,12 +53,21 @@ export default function SessionRoom() {
     setLoadingSessions(true);
     try {
       const account = await loadAccount(true);
-      if (request === listRequest.current) setSessions(account.spaces);
+      if (request === listRequest.current){setSessions(account.spaces);setSessionCursor(account.pages.spaces.next_cursor);}
     } catch (e) {
       if (request === listRequest.current) setError((e as Error).message);
     } finally {
       if (request === listRequest.current) setLoadingSessions(false);
     }
+  }
+  useEffect(()=>{if(pageFocus.current){const {id,trigger}=pageFocus.current;if(document.activeElement===trigger||(!trigger?.isConnected&&document.activeElement===document.body))document.getElementById(id)?.focus();pageFocus.current=null;}},[sessions]);
+  async function moreSessions(){
+    if(!sessionCursor||paging.current)return;paging.current=true;const request=listRequest.current,trigger=document.activeElement;setLoadingSessions(true);setError('');
+    try{const page=await clientRequest(`/api/workspace?catalog=spaces&cursor=${encodeURIComponent(sessionCursor)}`);if(request!==listRequest.current)return;
+      if(!page.next_cursor&&page.items.length&&document.activeElement===trigger)pageFocus.current={id:`session-${page.items[0].id}`,trigger};
+      setSessions(previous=>[...previous,...page.items.filter((item:Session)=>!previous.some(old=>old.id===item.id))]);setSessionCursor(page.next_cursor);
+    }catch(error){if(request===listRequest.current)setError((error as Error).message);}
+    finally{paging.current=false;if(request===listRequest.current)setLoadingSessions(false);}
   }
 
   async function perform(action: () => Promise<void>) {
@@ -72,7 +82,7 @@ export default function SessionRoom() {
 
   async function enter(id: string) {
     // Check membership before navigating; the room rechecks access on every read.
-    await clientRequest(`/api/workspace?space=${encodeURIComponent(id)}`);
+    await clientRequest(`/api/workspace?space=${encodeURIComponent(id)}&header=yes`);
     listRequest.current++;
     setLoadingSessions(false);
     setError('');
@@ -140,8 +150,9 @@ export default function SessionRoom() {
         {view === 'join' && <>
           {loadingSessions && <p className="accord-feedback" role="status">Finding your sessions…</p>}
           {sessions.length > 0 && <div className="accord-existing" aria-label="Your sessions">
-            {sessions.map(item => <Button key={item.id} className="accord-session-row" disabled={working} onClick={() => void perform(() => enter(item.id))}>{item.name}</Button>)}
+            {sessions.map(item => <Button key={item.id} id={`session-${item.id}`} className="accord-session-row" disabled={working} onClick={() => void perform(() => enter(item.id))}>{item.name}</Button>)}
           </div>}
+          {sessionCursor&&<Button className="accord-session-row" disabled={working||loadingSessions} onClick={()=>void moreSessions()}>{loadingSessions?'Loading…':'More sessions'}</Button>}
           <form className="accord-form" onSubmit={join}>
             <label htmlFor="invitation-code">Invitation code<Input id="invitation-code" value={code} onChange={e => setCode(e.target.value)} required maxLength={150} placeholder="Paste your invitation code" disabled={working || saved?.view === 'join'} autoComplete="off" autoCapitalize="none" spellCheck={false} /></label>
             {saved?.view === 'join' && !working && <p className="accord-feedback" role="status">You joined. Retry opening your session below.</p>}

@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
 import {clientRequest,RequestFailure} from '@/lib/client-request';
+import {restoreDialogFocus} from '@/lib/dialog-focus';
 type Row=Record<string,any>;
 const states:Record<string,string>={queued:'Waiting for agent',working:'In progress',needs_input:'Needs input',completed:'Completed',declined:'Declined'};
 const stamp=(value:string)=>new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
@@ -20,7 +21,7 @@ export function TaskDialog({taskId,report,onClose,onSaved}:{taskId:string;report
       if(review){setMustReview(false);retry.current=null;}
     }catch(e){setError((e as Error).message);}finally{setLoading(false);}
   }
-  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;dialog.current?.showModal();void load();return()=>{const target=previous?.isConnected?previous:document.getElementById(`task-history-${taskId}`);target?.focus();};},[]);
+  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;dialog.current?.showModal();void load();return()=>{restoreDialogFocus(previous,`task-history-${taskId}`);};},[]);
   async function submit(event:React.FormEvent){
     event.preventDefault();if(!data||mustReview||saving||loading)return;
     const args={task_id:taskId,expected_version:expectedVersion,status,feedback},signature=JSON.stringify(args);

@@ -6,6 +6,7 @@ import { clientRequest, RequestFailure } from '@/lib/client-request';
 import { assistantFor, assistants, museConnectionRequest, verificationPrompt } from '@/lib/assistant-connections';
 import { AssistantInstallGuide } from './assistant-setup-dialog';
 import './agent-connection-dialog.css';
+import { PagedSelect } from './paged-select';
 
 type AgentProfile = {
   id: string;
@@ -15,8 +16,7 @@ type AgentProfile = {
   status: string;
   last_seen_at?: string | null;
 };
-type Bootstrap = { user: { id: string }; agents: AgentProfile[] };
-type Room = { agents: AgentProfile[] };
+type ConnectionState = { user:{id:string};profile?:AgentProfile;attached?:boolean;has_profiles?:boolean };
 type Props = { spaceId: string; userId: string; onClose: () => void; onAttached: () => void };
 type Creation = { signature: string; requestId: string; profileId?: string };
 
@@ -34,7 +34,7 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
   const mounted = useRef(false), revision = useRef(0), writing = useRef(false);
   const creation = useRef<Creation | null>(null);
   const setup = useRef<{ profileId: string; baseline: string | null } | null>(null);
-  const [profiles, setProfiles] = useState<AgentProfile[]>([]);
+  const [hasProfiles,setHasProfiles]=useState(false);
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const [selectedId, setSelectedId] = useState('');
   const [name, setName] = useState(''), [provider, setProvider] = useState('');
@@ -54,27 +54,23 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
   useEffect(() => { if (step === 2) copyButton.current?.focus(); }, [step]);
   useEffect(() => { if (instructionsOpen) instructionsField.current?.focus(); }, [instructionsOpen]);
 
-  async function freshState() {
-    // Bootstrap also ensures the signed-in person exists before creating a profile.
-    const bootstrap = await clientRequest('/api/workspace') as Bootstrap;
-    if (bootstrap.user.id !== userId) throw new RequestFailure('Your signed-in account changed. Reopen this room before connecting an agent.', 403);
-    const room = await clientRequest(`/api/workspace?space=${encodeURIComponent(spaceId)}`) as Room;
-    return { bootstrap, room };
+  async function freshState(profileId?:string) {
+    const params=new URLSearchParams({space:spaceId});if(profileId)params.set('profile',profileId);else params.set('setup','yes');
+    const state=await clientRequest(`/api/workspace?${params}`) as ConnectionState;
+    if(state.user.id!==userId)throw new RequestFailure('Your signed-in account changed. Reopen this room before connecting an agent.',403);
+    return state;
   }
 
   async function loadOptions() {
     const request = ++revision.current;
     setLoading(true); setError(''); setAccess(false); setContact(null);
     try {
-      const { bootstrap } = await freshState();
+      const state=await freshState();
       if (!current(request)) return;
-      const owned = bootstrap.agents.filter(agent => agent.owner_id === userId && agent.status !== 'revoked');
-      setProfiles(owned);
-      setSelectedId(previous => owned.some(agent => agent.id === previous) ? previous : owned[0]?.id || '');
-      if (!owned.length) setMode('new');
+      setHasProfiles(!!state.has_profiles);if(!state.has_profiles)setMode('new');
       setAccess(true);
     } catch (failure) {
-      if (current(request)) { setProfiles([]); setError((failure as Error).message); }
+      if (current(request)) { setHasProfiles(false); setError((failure as Error).message); }
     } finally {
       if (current(request)) setLoading(false);
     }
@@ -100,11 +96,10 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spaceId, userId]);
 
-  function validateProfile(bootstrap: Bootstrap, room: Room, profileId: string) {
-    const owned = bootstrap.agents.find(agent => agent.id === profileId && agent.owner_id === userId && agent.status !== 'revoked');
-    const attached = room.agents.find(agent => agent.id === profileId && agent.owner_id === userId && agent.status !== 'revoked');
-    if (!owned || !attached) throw new RequestFailure('This profile is no longer available in this room. Review your agent settings before continuing.', 403);
-    return attached;
+  function validateProfile(state:ConnectionState) {
+    const profile=state.profile;
+    if(!profile||profile.owner_id!==userId||profile.status==='revoked'||!state.attached)throw new RequestFailure('This profile is no longer available in this room. Review your agent settings before continuing.',403);
+    return profile;
   }
 
   function recordContact(agent: AgentProfile) {
@@ -124,7 +119,7 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
     setBusy(true); setError(''); setCopyError('');
     try {
       // Recheck account and room access before either write.
-      let { bootstrap } = await freshState();
+      await freshState();
       if (!current(request)) return;
       let profileId = selectedId;
       if (mode === 'new') {
@@ -138,20 +133,18 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
           retry.profileId = receipt.id as string;
           if (!current(request)) return;
           setCreatedId(retry.profileId);
-          bootstrap = await clientRequest('/api/workspace') as Bootstrap;
-          if (!current(request)) return;
-          if (bootstrap.user.id !== userId) throw new RequestFailure('Your signed-in account changed. Reopen this room before continuing.', 403);
         }
         profileId = retry.profileId;
       }
-      const candidate = bootstrap.agents.find(agent => agent.id === profileId && agent.owner_id === userId && agent.status !== 'revoked');
-      if (!candidate) throw new RequestFailure('Choose an available profile owned by your account.', 403);
+      const checked=await freshState(profileId);if(!current(request))return;
+      const candidate=checked.profile;
+      if(!candidate||candidate.owner_id!==userId||candidate.status==='revoked')throw new RequestFailure('Choose an available profile owned by your account.',403);
       if (setup.current?.profileId !== profileId) setup.current = { profileId, baseline: candidate.last_seen_at || null };
       await clientRequest('/api/workspace', 'attach_agent', { space_id: spaceId, agent_id: profileId });
       if (!current(request)) return;
-      const state = await freshState();
+      const state = await freshState(profileId);
       if (!current(request)) return;
-      recordContact(validateProfile(state.bootstrap, state.room, profileId));
+      recordContact(validateProfile(state));
       setAccess(true); setStep(2); setCopied(false); onAttached();
     } catch (failure) {
       if (current(request)) {
@@ -169,9 +162,9 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
     const request = ++revision.current;
     setLoading(true); setError(''); setAccess(false); setContact(null);
     try {
-      const state = await freshState();
+      const state = await freshState(setup.current.profileId);
       if (!current(request)) return;
-      recordContact(validateProfile(state.bootstrap, state.room, setup.current.profileId));
+      recordContact(validateProfile(state));
       setAccess(true); onAttached();
     } catch (failure) {
       if (current(request)) { setProfile(null); setError((failure as Error).message); }
@@ -208,8 +201,8 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
     <p id="agent-connection-description" className="agent-connection-description">{step === 1 ? 'Choose the assistant you want in this room.' : 'Finish setup in your assistant, then check its connection here.'}</p>
 
     {step === 1 && access && <form onSubmit={attach}>
-      {profiles.length > 0 && <fieldset className="agent-connection-choice" disabled={busy || loading}><legend className="sr-only">Agent profile type</legend><label><input type="radio" name="agent-profile-mode" checked={mode === 'existing'} onChange={() => setMode('existing')} /> Existing assistant</label><label><input type="radio" name="agent-profile-mode" checked={mode === 'new'} onChange={() => setMode('new')} /> Add an assistant</label></fieldset>}
-      {mode === 'existing' ? <div className="form-field"><label htmlFor="agent-connection-profile">Your agent</label><select id="agent-connection-profile" value={selectedId} disabled={busy || loading} required onChange={event => setSelectedId(event.target.value)}><option value="">Choose an agent</option>{profiles.map(agent => <option key={agent.id} value={agent.id}>{agent.name} · {agent.provider}</option>)}</select></div> : <><div className="form-field"><label htmlFor="agent-connection-name">Name</label><input id="agent-connection-name" value={name} required maxLength={80} disabled={busy || !!createdId} placeholder="e.g. My thinking partner" onChange={event => setName(event.target.value)} /></div><div className="form-field"><label htmlFor="agent-connection-provider">Your assistant</label><select id="agent-connection-provider" value={provider} required disabled={busy || !!createdId} onChange={event => setProvider(event.target.value)}><option value="">Choose your assistant</option>{assistants.map(item => <option key={item.id} value={item.profileProvider}>{item.name}</option>)}</select></div>{createdId && <p className="agent-connection-hint">Profile saved. Try adding it again.</p>}</>}
+      {hasProfiles && <fieldset className="agent-connection-choice" disabled={busy || loading}><legend className="sr-only">Agent profile type</legend><label><input type="radio" name="agent-profile-mode" checked={mode === 'existing'} onChange={() => setMode('existing')} /> Existing assistant</label><label><input type="radio" name="agent-profile-mode" checked={mode === 'new'} onChange={() => setMode('new')} /> Add an assistant</label></fieldset>}
+      {mode === 'existing' ? <div className="form-field"><label htmlFor="agent-connection-profile">Your agent</label><PagedSelect id="agent-connection-profile" label="Your agent" source={{kind:'agents'}} initialValue={selectedId} disabled={busy||loading} onChange={setSelectedId}/></div> : <><div className="form-field"><label htmlFor="agent-connection-name">Name</label><input id="agent-connection-name" value={name} required maxLength={80} disabled={busy || !!createdId} placeholder="e.g. My thinking partner" onChange={event => setName(event.target.value)} /></div><div className="form-field"><label htmlFor="agent-connection-provider">Your assistant</label><select id="agent-connection-provider" value={provider} required disabled={busy || !!createdId} onChange={event => setProvider(event.target.value)}><option value="">Choose your assistant</option>{assistants.map(item => <option key={item.id} value={item.profileProvider}>{item.name}</option>)}</select></div>{createdId && <p className="agent-connection-hint">Profile saved. Try adding it again.</p>}</>}
       <p className="agent-connection-hint">Your assistant can read what’s shared here. Work permissions are separate.</p>
       <div className="dialog-actions"><button type="button" className="button secondary" disabled={busy} onClick={close}>Cancel</button><button type="submit" className="button primary" disabled={busy || loading || (mode === 'existing' ? !selectedId : !name.trim() || !provider.trim())}>{busy ? 'Adding agent…' : createdId ? 'Retry adding to room' : 'Add to room'}</button></div>
     </form>}

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Copy, Download, X } from 'lucide-react';
 import { assistantFor, assistants, museConnectionRequest, verificationPrompt, type AssistantId, type AssistantRecipe, type SetupProfile } from '@/lib/assistant-connections';
+import { PagedSelect } from './paged-select';
+import { clientRequest } from '@/lib/client-request';
 
 export function AssistantInstallGuide({ recipe, endpoint, onCopy, profile, spaceId }: {
   recipe: AssistantRecipe; endpoint: string; onCopy: (value: string) => void; profile?: SetupProfile; spaceId?: string;
@@ -23,12 +25,14 @@ export function AssistantSetupDialog({ agents, userId, initialProfileId = '', on
   const initial = agents.find(agent => agent.id === initialProfileId && agent.owner_id === userId && agent.status !== 'revoked');
   const [assistantId, setAssistantId] = useState<AssistantId | ''>(initial ? assistantFor(initial.provider).id : '');
   const [profileId, setProfileId] = useState(initial?.id || '');
+  const [selectedProfile,setSelectedProfile]=useState<SetupProfile|undefined>(initial),[loadError,setLoadError]=useState('');
+  const [loadingInitial,setLoadingInitial]=useState(!!initialProfileId&&!initial);
   const [copied, setCopied] = useState(false), [fallback, setFallback] = useState('');
   const recipe = assistants.find(item => item.id === assistantId);
-  const profiles = agents.filter(agent => agent.owner_id === userId && agent.status !== 'revoked');
-  const profile = profiles.find(agent => agent.id === profileId);
+  const profile = selectedProfile;
   const endpoint = typeof window === 'undefined' ? '' : `${window.location.origin}/mcp`;
   const prompt = profile ? verificationPrompt(profile) : '';
+  useEffect(()=>{let current=true;if(initialProfileId&&!initial){setLoadingInitial(true);void clientRequest(`/api/workspace?profile=${encodeURIComponent(initialProfileId)}`).then(result=>{if(result.user.id!==userId)throw new Error('Your account changed. Reopen assistant setup.');if(current){setSelectedProfile(result.profile);setProfileId(result.profile.id);setAssistantId(assistantFor(result.profile.provider).id);}}).catch(error=>{if(current)setLoadError(error.message);}).finally(()=>{if(current)setLoadingInitial(false);});}return()=>{current=false;};},[initialProfileId,userId]);
 
   useEffect(() => {
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -49,9 +53,11 @@ export function AssistantSetupDialog({ agents, userId, initialProfileId = '', on
   return <dialog ref={dialog} className="muse-dialog" aria-labelledby="assistant-setup-title" aria-describedby="assistant-setup-description" onCancel={onClose}>
     <div className="dialog-heading"><div><span className="eyebrow">ACCORD</span><h2 id="assistant-setup-title">Connect your assistant</h2></div><button className="icon-button" aria-label="Close assistant setup" onClick={onClose}><X size={20}/></button></div>
     <p id="assistant-setup-description" className="dialog-description">Choose the assistant you use. Your rooms and permissions stay in Accord.</p>
-    <div className="form-field"><label htmlFor="assistant-provider">Your assistant</label><select id="assistant-provider" value={assistantId} onChange={event => { setAssistantId(event.target.value as AssistantId | ''); setProfileId(''); setCopied(false); setFallback(''); }}><option value="">Choose your assistant</option>{assistants.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+    {loadError&&<p className="error" role="alert">{loadError}</p>}
+    {loadingInitial&&<p className="field-help" role="status">Loading your assistant…</p>}
+    <div className="form-field"><label htmlFor="assistant-provider">Your assistant</label><select id="assistant-provider" value={assistantId} disabled={loadingInitial} onChange={event => { setAssistantId(event.target.value as AssistantId | ''); setProfileId('');setSelectedProfile(undefined); setCopied(false); setFallback('');setLoadError(''); }}><option value="">Choose your assistant</option>{assistants.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
     {recipe && <><section className="muse-setup-step" aria-label="Choose an assistant in Accord"><h3>In Accord</h3>
-      {profiles.length > 0 && <div className="form-field"><label htmlFor="assistant-profile">Saved assistant</label><select id="assistant-profile" value={profileId} onChange={event => { setProfileId(event.target.value); setCopied(false); setFallback(''); }}><option value="">Choose a name</option>{profiles.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select></div>}
+      <div className="form-field"><label htmlFor="assistant-profile">Saved assistant</label><PagedSelect key={assistantId} id="assistant-profile" label="Saved assistant" source={{kind:'agents'}} initialValue={profileId} onSelected={item=>{setProfileId(item?.id||'');setSelectedProfile(item as SetupProfile|undefined);setCopied(false);setFallback('');}}/></div>
       <button className="button quiet" onClick={() => onCreateProfile(recipe.profileProvider)}>Add an assistant</button>
     </section>
     <AssistantInstallGuide recipe={recipe} endpoint={endpoint} profile={profile} onCopy={value => void copy(value)}/>
