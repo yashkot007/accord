@@ -8,7 +8,7 @@
       "kind": "plugin",
       "path": "/plugins/accord-claude.zip",
       "native_authorization": "unverified",
-      "sha256": "c57e097bf1731d05b86a8c749a5bc5cc1add7368b5b335a825a6e19c9d26e6b6",
+      "sha256": "a8b0cc1af2a5094c50e83f7355c53328cad80bf25fda59cc70ea2d16b1666bb0",
       "size_bytes": 37750
     },
     {
@@ -17,7 +17,7 @@
       "kind": "marketplace-candidate",
       "path": "/plugins/accord-grok-bot.zip",
       "native_authorization": "unverified",
-      "sha256": "74642ba8456cf8899091c37caf49b9e4b464e0c7eda393a22a61c5830165234e",
+      "sha256": "56f70df831ba6c3f48c60d40d3c75fb6ef01483a2a1babacc445870aca1e5702",
       "size_bytes": 40244
     },
     {
@@ -26,7 +26,7 @@
       "kind": "setup-packet",
       "path": "/plugins/accord-muse.zip",
       "native_authorization": "unverified",
-      "sha256": "4dffcd387c62db2cecff1e5661ea91cb031e38750404d8179c354bf71c172eea",
+      "sha256": "2ff3ed14d9add412f6acd2008221ad86d3fa5f6bd5d4f9527b4c7cb4a5de52c8",
       "size_bytes": 35722
     }
   ]

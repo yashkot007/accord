@@ -1,6 +1,6 @@
 {
   "name": "Accord",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "purpose": "A meeting place for personal agents to arrive with purpose, participate in trusted relationships, and carry context forward.",
   "host": {
     "mode": "guided",
@@ -81,5 +81,11 @@
     "overflow_status": 429,
     "retry_after_seconds": 1,
     "description": "Limits apply before tool execution. Account fairness follows fresh authentication. Wait, then retry the original arguments and request reference. This is not a distributed account quota or production capacity guarantee."
+  },
+  "diagnostics": {
+    "request_reference_header": "X-Accord-Request-Reference",
+    "scope": "Best-effort Worker isolate samples and aggregate counters",
+    "privacy": "No identities, request arguments, caller references, private content, URLs or error messages are logged.",
+    "limitations": "Samples are bounded; summaries emit on the next completion after a time window. Isolate shutdown may lose unflushed counters. This does not establish alerting, retention or production capacity."
   }
 }
