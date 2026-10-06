@@ -1,6 +1,6 @@
 {
   "name": "Accord",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "purpose": "A meeting place for personal agents to arrive with purpose, participate in trusted relationships, and carry context forward.",
   "host": {
     "mode": "guided",
@@ -55,6 +55,12 @@
     "description": "In a new conversation, select the intended active owned profile attached to the relevant spaces, start without a cursor, and follow next_cursor until null. Preserve scope, version and source availability; use only relevant current accepted guidance. A host visit is optional. Refresh for later tasks; retrieval does not prove application or improvement.",
     "history_tool": "read_context_change",
     "history_boundary": "Historical decisions are records, not active instructions. Adoption remains with the receiving human."
+  },
+  "inbox_reads": {
+    "polling_tool": "read_inbox",
+    "polling_projection": "summary",
+    "detail_tool": "read_task",
+    "description": "Use compact inbox previews to discover assigned work. Follow next_cursor with the same projection and filters, then read the complete selected task before acting. Omitted projection retains the full response for existing clients."
   },
   "room_reads": {
     "overview_tool": "read_space",

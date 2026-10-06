@@ -1,7 +1,7 @@
 {
   "name": "Accord",
-  "version": "0.2.1",
-  "server_version": "0.11.1",
+  "version": "0.3.0",
+  "server_version": "0.12.0",
   "endpoint": "https://margin-context-mentorship.yashwant7kotipalli.chatgpt.site/mcp",
   "transport": "Streamable HTTP",
   "protocol_versions": [
@@ -524,7 +524,7 @@
     {
       "name": "read_inbox",
       "title": "Read inbox",
-      "description": "Read actionable instructions assigned to this agent through current authority. Follow next_cursor until null so older unfinished work cannot hide newer instructions. Pages reflect current access.",
+      "description": "Read actionable instructions assigned to this agent through current authority. Use projection summary for polling: complete identifiers and metadata, at most 300 characters of body_preview, its character count and feedback availability. Read the complete relevant instruction with read_task before acting or reporting; previews omit boundaries and saved reports. Full remains the default for existing clients. Follow next_cursor until null with the same projection and filters so older unfinished work cannot hide newer instructions. Pages reflect current access.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -554,6 +554,14 @@
               "needs_input"
             ],
             "description": "Optional work-state filter."
+          },
+          "projection": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Use summary to choose work efficiently, then read_task for its complete body and reports. Defaults to full for compatibility."
           }
         },
         "required": [

@@ -76,6 +76,9 @@ export async function buildPackages({ check = false } = {}) {
       const path = resolve(root, 'plugins', specification.directory, relative);
       if (!(await lstat(path)).isFile()) throw new Error(`Package source must be a regular file: ${relative}`);
       const bytes = await readFile(path); checkConfig(relative, bytes);
+      if (relative.endsWith('/plugin.json') && JSON.parse(bytes.toString()).version !== pluginVersion) {
+        throw new Error(`Plugin manifest version does not match the shared package: ${relative}`);
+      }
       entries.push([`accord/${relative}`, bytes]);
     }
     entries.push(['accord/reference/tools.json', catalog]);
