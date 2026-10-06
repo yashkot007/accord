@@ -85,6 +85,13 @@
       "when": 1791257887655,
       "tag": "0011_agent_page_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791262231976,
+      "tag": "0012_room_read_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -22,11 +22,9 @@ export class AccordHost {
     return v;
   }
   async rooms(agentId: string) {
-    if (agentId) {
-      await this.visitor(agentId);
-      return this.workspace.all('SELECT s.*,m.role FROM spaces s JOIN members m ON m.space_id=s.id JOIN space_agents sa ON sa.space_id=s.id WHERE m.user_id=? AND sa.agent_id=? ORDER BY s.created_at DESC', this.workspace.user.id, agentId);
-    }
-    return this.workspace.all('SELECT s.*,m.role FROM spaces s JOIN members m ON m.space_id=s.id WHERE m.user_id=? ORDER BY s.created_at DESC', this.workspace.user.id);
+    if(agentId)return this.workspace.listAgentRooms({limit:20},agentId);
+    const rows=await this.workspace.all('SELECT s.id,s.name,s.topic,s.purpose,s.created_at FROM spaces s JOIN members m ON m.space_id=s.id WHERE m.user_id=? ORDER BY s.created_at DESC,s.id DESC LIMIT 21',this.workspace.user.id);
+    return {spaces:rows.slice(0,20),next_cursor:null,more:rows.length>20};
   }
   async arrivals(cursor?: string) {
     let after:{at:string;id:string}|null=null;
@@ -57,7 +55,7 @@ export class AccordHost {
   async guide(v: Record<string, any>) {
     if (v.status === 'departed') return { visit:v, visitor:{name:'Participant'}, mode:'guided', host:{name:'Accord',service:hostServices.find(s=>s.id===v.service)?.name,message:'This session is closed. The summary records what was reported. Closing a session does not close its relationship or shared space.'},rooms:[],recommended_room_id:null,room:null,steps:[],boundaries:[],receipt:{outcome:v.outcome,recorded_at:v.updated_at,source:'Reported by the participant; not independently verified'} };
     if(v.agent_id&&(await this.workspace.ownedAgent(v.agent_id,true)).status==='revoked')return {visit:v,visitor:{name:'Disconnected agent'},mode:'guided',restricted:true,host:{name:'Accord',message:'This agent is disconnected. You can still record an outcome and close your private session. Shared context and agent actions are unavailable.'},rooms:[],room:null,steps:[],boundaries:[],receipt:null};
-    const agent = await this.visitor(v.agent_id || ''), rooms = await this.rooms(v.agent_id || '');
+    const agent = await this.visitor(v.agent_id || ''), catalog = await this.rooms(v.agent_id || ''),rooms=catalog.spaces as Record<string,any>[];
     const requested = words(v.purpose); for (const word of stopWords) requested.delete(word);
     const ranked = rooms.map(room => {
       const terms = words(`${room.name} ${room.topic} ${room.purpose}`);
@@ -72,27 +70,10 @@ export class AccordHost {
         ? `“${recommendation.name}” is a useful starting point: its purpose shares ${recommendation.matched.slice(0, 3).map(w => `“${w}”`).join(', ')} with this session’s purpose. Choose a space to see what is available there.`
         : 'Your accessible spaces are here. I haven’t found a clear purpose match, so choose a space for this session. A shared topic alone never grants access.';
     let room = null;
-    if (v.room_id && rooms.some(r=>r.id===v.room_id)) {
-      if (v.agent_id) await this.workspace.agentAccess(v.room_id, v.agent_id);
-      const s: Awaited<ReturnType<Workspace['readSpace']>> & Record<string, any> = await this.workspace.readSpace(v.room_id);
-      const active = s.grants.filter(g => g.status === 'active' && g.expires_at > timestamp() && s.agents.some(a => a.id === g.from_agent && a.status !== 'revoked' && s.people.some(p=>p.user_id===a.owner_id)) && s.agents.some(a => a.id === g.to_agent && a.status !== 'revoked' && s.people.some(p=>p.user_id===a.owner_id)));
-      const ownIds = v.agent_id ? [v.agent_id] : s.agents.filter(a => a.owner_id === this.workspace.user.id && a.status !== 'revoked').map(a => a.id);
-      const outgoing = active.filter(g => ownIds.includes(g.from_agent));
-      const inbox = s.tasks.filter(t => ownIds.includes(t.to_agent) && ['queued','working','needs_input'].includes(t.status) && active.some(g => g.id === t.grant_id && g.allow_assign));
-      const reviews = s.changes.filter(c => ownIds.includes(c.to_agent) && c.status === 'pending');
-      const sources = s.sources.filter(s=>s.status==='active');
-      const context = s.changes.filter(c => ownIds.includes(c.to_agent) && c.status === 'accepted');
-      room = {
-        id:s.id, name:s.name, purpose:s.purpose, topic:s.topic,
-        sources:sources.map(x => ({id:x.id,title:x.title,kind:x.kind})),
-        agents:s.agents.map(a => ({id:a.id,name:a.name,status:a.status})),
-        permissions:{read_shared_context:true,assign_work:outgoing.some(g => g.allow_assign),propose_context:outgoing.some(g => g.allow_context),accept_context:false},
-        grants:outgoing.map(g => ({id:g.id,to_agent:g.to_agent,scope:g.scope,assign:!!g.allow_assign,propose:!!g.allow_context,expires_at:g.expires_at})),
-        inbox:inbox.map(t=>({id:t.id,title:t.title,status:t.status})),
-        reviews:reviews.map(c=>({id:c.id,title:c.title})),
-        context:context.map(c=>({id:c.id,title:c.title,instruction:c.adopted,scope:c.scope,reason:c.reason,source_id:c.source_id,source_status:c.source_status,source_version:c.source_version})),
-      };
-      message = `You’re in “${s.name}”. ${sources.length ? `${sources.length} shared ${sources.length === 1 ? 'source is' : 'sources are'} available for this session.` : 'Start by sharing the background this relationship needs.'} ${inbox.length ? `${inbox.length} ${inbox.length === 1 ? 'instruction awaits' : 'instructions await'} this participant.` : 'No open instructions are assigned to this participant.'}`;
+    if(v.room_id) {
+      try {room=await this.workspace.hostRoom(v.room_id,v.agent_id||undefined);}
+      catch(error){if(!(error instanceof AppError)||error.status!==403)throw error;}
+      if(room)message=`You’re in “${room.name}”. ${room.more.sources?'Shared sources are available; read the source pages for the complete list.':room.sources.length?`${room.sources.length} shared ${room.sources.length===1?'source is':'sources are'} available for this session.`:'Start by sharing the background this relationship needs.'} ${room.more.inbox?'Open instructions are assigned; read every inbox page.':room.inbox.length?`${room.inbox.length} ${room.inbox.length===1?'instruction awaits':'instructions await'} this participant.`:'No open instructions are assigned to this participant.'}`;
     }
     const preparation: Record<string, {title:string;detail:string}> = {
       perspective:{title:'Frame the decision',detail:'Use the shared background to name the decision, your current assumption, and the perspective you are seeking.'},
@@ -102,8 +83,8 @@ export class AccordHost {
     };
     const focus = preparation[v.service];
     const steps = room ? [
-      { title:focus.title, detail:room.sources.length ? focus.detail : 'Ask a person in this space to share the relevant background before proceeding. ' + focus.detail, tool:room.sources.length && v.agent_id ? 'read_space' : null },
-      { title:room.inbox.length ? 'Pick up the thread' : 'Use the relationship', detail:room.inbox.length ? 'Read the assigned work, then report actual progress or the input you need.' : room.permissions.assign_work ? 'You may send work through one of the listed authority grants.' : 'You can read shared material. New instructions need permission from the receiving owner.', tool:v.agent_id ? (room.inbox.length ? 'read_inbox' : room.permissions.assign_work ? 'send_instruction' : 'read_space') : null },
+      { title:focus.title, detail:room.sources.length ? 'Read the relevant shared source by its ID. '+focus.detail : 'Ask a person in this space to share the relevant background before proceeding. ' + focus.detail, tool:room.sources.length && v.agent_id ? 'read_shared_source' : null },
+      { title:room.inbox.length ? 'Pick up the thread' : 'Use the relationship', detail:room.inbox.length ? 'Read the assigned work, then report actual progress or the input you need.' : room.permissions.assign_work ? 'Read grant pages to find a current connection permitting assignment before sending work.' : 'You can read shared material. New instructions need permission from the receiving owner.', tool:v.agent_id ? (room.inbox.length ? 'read_inbox' : room.permissions.assign_work ? 'read_space_section' : 'read_space') : null },
       { title:'Carry something forward', detail:room.context.length ? `${room.context.length} accepted ${room.context.length === 1 ? 'piece' : 'pieces'} of guidance can be used by this participant.` : 'Proposed guidance stays a proposal until the receiving person accepts it.', tool:v.agent_id ? 'read_context' : null },
     ] : [
       {title:'Set your purpose',detail:'Your purpose is recorded in your private session. It has not been sent to another agent.',tool:null},
@@ -111,7 +92,7 @@ export class AccordHost {
       {title:'Review permissions',detail:'Read the shared context and available authority before taking action.',tool:null},
     ];
     if(v.status==='departed') message='This session is closed. The summary records what was reported. Closing a session does not close its relationship or shared space.';
-    return {visit:v,visitor:agent ? {id:agent.id,name:agent.name,status:agent.status} : {name:this.workspace.user.name,type:'person'},mode:'guided',host:{name:'Accord',service:service.name,message},rooms:ranked,recommended_room_id:recommendation?.id || null,room,steps,boundaries:['The session purpose and outcome notes are private to the signed-in owner.','Opening a space does not create or extend authority.','Other agents act when their own assistant invokes the connection.','Human owners decide which proposed context is accepted.'],receipt:null};
+    return {visit:v,visitor:agent ? {id:agent.id,name:agent.name,status:agent.status} : {name:this.workspace.user.name,type:'person'},mode:'guided',host:{name:'Accord',service:service.name,message},rooms:ranked,rooms_next_cursor:catalog.next_cursor,rooms_complete:!catalog.next_cursor&&!catalog.more,recommendation_scope:'The rooms shown on this page. Use list_spaces for further agent-room pages.',recommended_room_id:recommendation?.id || null,room,steps,boundaries:['The session purpose and outcome notes are private to the signed-in owner.','Opening a space does not create or extend authority.','Other agents act when their own assistant invokes the connection.','Human owners decide which proposed context is accepted.'],receipt:null};
   }
   async perform(action:string, a:Args, channel:'human'|'agent'='human') {
     const agentId=channel==='agent'?field(a,'agent_id',100):undefined;

@@ -8,6 +8,21 @@ function request(message,headers={}){return new Request('https://accord.example/
 const call=(name,args={},id=1)=>({jsonrpc:'2.0',id,method:'tools/call',params:{name,arguments:args}});
 const initialization=version=>({jsonrpc:'2.0',id:0,method:'initialize',params:{protocolVersion:version,capabilities:{},clientInfo:{name:'independent-contract-client',version:'1'}}});
 
+test('MCP exposes compact room summaries and exact active source reads without a human-management capability',async()=>{
+  const f=await pair();
+  try{
+    const source=await f.a.human('add_source',{space_id:f.space.id,title:'Selected note',kind:'Note',content:'Complete shared material'});
+    const invoke=async(name,args)=>{const response=await handleMcpPost(request(call(name,args)),async()=>f.a);assert.equal(response.status,200);return(await response.json()).result;};
+    const overview=await invoke('read_space',{agent_id:f.sender.id,space_id:f.space.id});assert.equal(overview.structuredContent.summaries,true);assert.equal(overview.structuredContent.sources[0].content,undefined);
+    const page=await invoke('read_space_section',{agent_id:f.sender.id,space_id:f.space.id,section:'sources'});assert.equal(page.structuredContent.items[0].id,source.id);
+    const detail=await invoke('read_shared_source',{agent_id:f.sender.id,space_id:f.space.id,source_id:source.id});assert.equal(detail.structuredContent.source.content,'Complete shared material');
+    await f.a.human('set_source_state',{source_id:source.id,status:'withdrawn',expected_version:0});
+    const hidden=await invoke('read_shared_source',{agent_id:f.sender.id,space_id:f.space.id,source_id:source.id});assert.equal(hidden.isError,true);assert.ok(!JSON.stringify(hidden).includes('Complete shared material'));
+    let resolved=false;
+    const invalid=await handleMcpPost(request(call('read_space_section',{agent_id:f.sender.id,space_id:f.space.id,section:'credentials'})),async()=>{resolved=true;return f.a;});assert.equal((await invalid.json()).result.isError,true);assert.equal(resolved,false);
+  }finally{f.db.sqlite.close();}
+});
+
 test('valid MCP initialization, discovery and notifications do not resolve private identity',async()=>{
   let reads=0;const service=async()=>{reads++;throw Error('Unexpected private access');};
   for(const version of protocolVersions){const response=await handleMcpPost(request(initialization(version)),service);assert.equal(response.status,200);assert.equal((await response.json()).result.protocolVersion,version);assert.equal(response.headers.get('Cache-Control'),'no-store');}
