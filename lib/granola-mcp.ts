@@ -5,61 +5,135 @@ export const GRANOLA_ISSUER='https://mcp-auth.granola.ai';
 export const READ_TOOLS=['get_account_info','list_meetings','get_meetings','query_granola_meetings'] as const;
 export type GranolaTool = {name:string;description?:string;inputSchema:Record<string,any>};
 export type Fetcher = typeof fetch;
+type ProviderRequest={response:Response;limit:number;finish:()=>void;consume:<T>(operation:()=>Promise<T>,cancel?:()=>void)=>Promise<T>};
+const deadlineError=()=>new AppError('Granola took too long to respond. Please try again.',502);
 
-export async function providerFetch(fetcher: Fetcher, url: string, init: RequestInit, limit=256*1024) {
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+/** Internal workflow budget: reuse this object across discovery, refresh and reads. */
+export class GranolaRequestBudget {
+  private readonly deadlineAt:number;
+  private readonly clock:()=>number;
+  private lastClock:number;
+  constructor(timeoutMs:number,clock:()=>number=()=>performance.now()) {
+    if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1)throw new RangeError('Choose a positive Granola request budget.');
+    this.clock=clock;this.lastClock=clock();
+    if(!Number.isFinite(this.lastClock))throw new RangeError('Choose a finite Granola request clock.');
+    this.deadlineAt=this.lastClock+timeoutMs;
+  }
+  remainingMs(){this.lastClock=Math.max(this.lastClock,this.clock());return Math.max(0,this.deadlineAt-this.lastClock);}
+  assertActive(){if(this.remainingMs()<=0)throw deadlineError();}
+}
+
+/** Discard without depending on the stream source's cancellation promise. */
+function discardBody(body:ReadableStream<Uint8Array>|null) {
+  try {void body?.cancel().catch(()=>{});} catch {/* Locked or already closed. */}
+}
+function discardReader(reader:ReadableStreamDefaultReader<Uint8Array>) {
+  try {void reader.cancel().catch(()=>{});} catch {/* Cleanup cannot delay the result. */}
+}
+
+/** One deadline covers fetch headers and consumption; a slow chunk never resets it. */
+class ProviderDeadline {
+  readonly controller=new AbortController();
+  private stopped:AppError|undefined;
+  private interrupt:(error:AppError)=>void=()=>{};
+  private readonly interrupted=new Promise<never>((_,reject)=>{this.interrupt=reject;});
+  private readonly timer:ReturnType<typeof setTimeout>|undefined;
+  private readonly budget:GranolaRequestBudget|undefined;
+  private readonly expiresAt:number;
+  private cancel:()=>void=()=>{};
+  constructor(budget?:GranolaRequestBudget) {
+    this.budget=budget;
+    // Also observe expiry between phases, or after a caller ignores the body.
+    void this.interrupted.catch(()=>{});
+    const remaining=Math.min(12000,budget?.remainingMs()??12000);
+    this.expiresAt=performance.now()+remaining;
+    if(remaining<=0){this.stop();return;}
+    this.timer=setTimeout(()=>this.stop(),remaining);
+  }
+  private stop() {
+    if(this.stopped)return;
+    this.stopped=deadlineError();this.interrupt(this.stopped);this.controller.abort();
+    try {this.cancel();} catch {/* Cancellation is best effort. */}
+  }
+  private checkExpiry(){if(performance.now()>=this.expiresAt||(this.budget&&this.budget.remainingMs()<=0))this.stop();}
+  get expired(){this.checkExpiry();return this.stopped!==undefined;}
+  async consume<T>(operation:()=>Promise<T>,cancel:()=>void=()=>{}):Promise<T> {
+    this.checkExpiry();
+    if(this.stopped)throw this.stopped;
+    this.cancel=cancel;
+    const work=Promise.resolve().then(()=>{if(this.stopped)throw this.stopped;return operation();});
+    try {
+      const result=await Promise.race([work,this.interrupted]);
+      this.checkExpiry();
+      // Abort/cancel may turn a pending read into EOF; that is not a complete reply.
+      if(this.stopped)throw this.stopped;
+      return result;
+    }catch(error){if(this.stopped)throw this.stopped;throw error;}
+    finally{this.cancel=()=>{};}
+  }
+  finish(){clearTimeout(this.timer);this.cancel=()=>{};}
+}
+
+export async function providerFetch(fetcher: Fetcher, url: string, init: RequestInit, limit=256*1024,budget?:GranolaRequestBudget):Promise<ProviderRequest> {
+  const deadline=new ProviderDeadline(budget);
   const endpoint=url===GRANOLA_MCP?'mcp':url.endsWith('/oauth-protected-resource/mcp')?'resource_metadata':url.endsWith('/oauth-authorization-server')?'authorization_metadata':url.endsWith('/oauth2/register')?'registration':url.endsWith('/oauth2/token')?'token':'unknown';
   try {
-    const response=await fetcher(url,{...init,redirect:'manual',signal:controller.signal});
+    const response=await deadline.consume(async()=>{
+      const result=await fetcher(url,{...init,redirect:'manual',signal:deadline.controller.signal});
+      // A fetch adapter can settle after ignoring abort. Discard its late body.
+      if(deadline.expired)discardBody(result.body);
+      return result;
+    });
     if(!response.ok) {
-      await response.body?.cancel().catch(()=>{});
+      discardBody(response.body);
       // Explicitly reject redirects: credentials must never travel to another destination.
       console.error('Granola upstream request rejected',{endpoint,status:response.status});
       if(response.status===401)throw new AppError('Granola needs you to sign in again.',401);
       if(response.status===429)throw new AppError('Granola is busy. Please wait before trying again.',429);
       throw new AppError('Granola could not complete this request. Please try again.',502);
     }
-    return {response,finish:()=>clearTimeout(timer),limit};
+    return {response,finish:()=>deadline.finish(),limit,consume:<T>(operation:()=>Promise<T>,cancel?:()=>void)=>deadline.consume(operation,cancel)};
   } catch(e) {
-    clearTimeout(timer);if(e instanceof AppError)throw e;
+    deadline.finish();if(e instanceof AppError)throw e;
     const name=e instanceof Error?e.name:'';
     // Never log upstream text, URLs, headers, bodies, tokens or account information.
-    console.error('Granola upstream request failed',{endpoint,kind:['TypeError','AbortError','TimeoutError','Error'].includes(name)?name:'UnknownError',reason:controller.signal.aborted?'timeout':e instanceof Error&&/redirect/i.test(e.message)?'redirect_rejected':'transport_failure'});
+    console.error('Granola upstream request failed',{endpoint,kind:['TypeError','AbortError','TimeoutError','Error'].includes(name)?name:'UnknownError',reason:deadline.controller.signal.aborted?'timeout':e instanceof Error&&/redirect/i.test(e.message)?'redirect_rejected':'transport_failure'});
     throw new AppError('Granola could not be reached. Please try again.',502);
   }
 }
-export async function boundedJson(fetcher:Fetcher,url:string,init:RequestInit) {
-  const request=await providerFetch(fetcher,url,init);
-  try {return JSON.parse(await boundedBody(request.response,request.limit));}
+export async function boundedJson(fetcher:Fetcher,url:string,init:RequestInit,budget?:GranolaRequestBudget) {
+  const request=await providerFetch(fetcher,url,init,256*1024,budget);
+  try {return JSON.parse(await boundedBody(request));}
   catch(e){if(e instanceof AppError)throw e;throw new AppError('Granola returned an unreadable response.',502);}
   finally{request.finish();}
 }
-async function boundedBody(response:Response,limit:number) {
+async function boundedBody(request:ProviderRequest) {
+  const {response,limit}=request;
   if(!response.body)return '';
   const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});let size=0,text='';
-  try {while(true){const next=await reader.read();if(next.done)break;size+=next.value.length;if(size>limit)throw new AppError('Granola returned too much information. Narrow your search.',413);text+=decoder.decode(next.value,{stream:true});}return text+decoder.decode();}
-  finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+  try {return await request.consume(async()=>{while(true){const next=await reader.read();if(next.done)break;size+=next.value.length;if(size>limit)throw new AppError('Granola returned too much information. Narrow your search.',413);text+=decoder.decode(next.value,{stream:true});}return text+decoder.decode();},()=>discardReader(reader));}
+  finally{discardReader(reader);reader.releaseLock();}
 }
 /** No URLs or tool names supplied by visitors; each short-lived session discovers the actual provider schema. */
 export class GranolaMcp {
   session:string|undefined;protocol='2025-06-18';
-  private token:string;private fetcher:Fetcher;
-  constructor(token:string,fetcher:Fetcher=fetch) {this.token=token;this.fetcher=fetcher;}
+  private token:string;private fetcher:Fetcher;private budget:GranolaRequestBudget|undefined;
+  constructor(token:string,fetcher:Fetcher=fetch,budget?:GranolaRequestBudget) {this.token=token;this.fetcher=fetcher;this.budget=budget;}
   async rpc(method:string,params:unknown={},notification=false) {
     const id=crypto.randomUUID();
     const headers:Record<string,string>={Authorization:`Bearer ${this.token}`,'Content-Type':'application/json',Accept:'application/json, text/event-stream','MCP-Protocol-Version':this.protocol};
     if(this.session)headers['Mcp-Session-Id']=this.session;
-    const request=await providerFetch(this.fetcher,GRANOLA_MCP,{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',...(notification?{}:{id}),method,params})});
+    const request=await providerFetch(this.fetcher,GRANOLA_MCP,{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',...(notification?{}:{id}),method,params})},256*1024,this.budget);
     try {
       const session=request.response.headers.get('Mcp-Session-Id');if(session&&session.length<=256)this.session=session;
-      if(notification){await request.response.body?.cancel();return null;}
+      if(notification){discardBody(request.response.body);return null;}
       let envelope:any;
       if(request.response.headers.get('content-type')?.includes('text/event-stream')) {
         const reader=request.response.body?.getReader();if(!reader)throw Error();
         const decoder=new TextDecoder();let buffer='',size=0;
-        try {while(!envelope){const next=await reader.read();if(next.done)break;size+=next.value.length;if(size>request.limit)throw new AppError('Granola returned too much information. Narrow your search.',413);buffer=(buffer+decoder.decode(next.value,{stream:true})).replaceAll('\r\n','\n');let end;while((end=buffer.indexOf('\n\n'))>=0){const event=buffer.slice(0,end);buffer=buffer.slice(end+2);const data=event.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trimStart()).join('\n');if(!data)continue;const candidate=JSON.parse(data);if(candidate.id===id){envelope=candidate;break;}}}}
-        finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
-      } else envelope=JSON.parse(await boundedBody(request.response,request.limit));
+        try {await request.consume(async()=>{while(!envelope){const next=await reader.read();if(next.done)break;size+=next.value.length;if(size>request.limit)throw new AppError('Granola returned too much information. Narrow your search.',413);buffer=(buffer+decoder.decode(next.value,{stream:true})).replaceAll('\r\n','\n');let end;while((end=buffer.indexOf('\n\n'))>=0){const event=buffer.slice(0,end);buffer=buffer.slice(end+2);const data=event.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trimStart()).join('\n');if(!data)continue;const candidate=JSON.parse(data);if(candidate.id===id){envelope=candidate;break;}}}},()=>discardReader(reader));}
+        finally{discardReader(reader);reader.releaseLock();}
+      } else envelope=JSON.parse(await boundedBody(request));
       if(envelope?.jsonrpc!=='2.0'||envelope.id!==id||envelope.error||!('result' in envelope))throw new AppError('Granola could not complete this request. Please try again.',502);
       return envelope.result;
     } catch(e){if(e instanceof AppError)throw e;throw new AppError('Granola returned an unreadable response.',502);}
