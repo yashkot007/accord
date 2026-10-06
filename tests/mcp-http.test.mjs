@@ -70,6 +70,35 @@ test('HTTP tool exchange preserves identity, duplicate safety, owner decisions a
 });
 
 
+test('agent-created work requires retry references before private access and recovers lost responses once',async()=>{
+  let resolved=0;
+  for(const [name,args] of [
+    ['send_instruction',{agent_id:'a',grant_id:'g',title:'Task',body:'Do the requested work'}],
+    ['propose_context_change',{agent_id:'a',grant_id:'g',title:'Guidance',instruction:'Consider the boundary',reason:'Avoid ambiguity'}],
+  ]){
+    const result=await(await handleMcpPost(request(call(name,args)),async()=>{resolved++;throw Error('No private access expected');})).json();
+    assert.ok(result.result?.isError||result.error);assert.equal(resolved,0);
+  }
+  const f=await pair();
+  try{
+    const invoke=async(name,args)=>(await(await handleMcpPost(request(call(name,args)),async()=>f.a)).json()).result;
+    for(const [name,args,table] of [
+      ['send_instruction',{agent_id:f.sender.id,grant_id:f.grant.id,title:'Task',body:'Only requested work',request_id:'lost-instruction'},'tasks'],
+      ['propose_context_change',{agent_id:f.sender.id,grant_id:f.grant.id,title:'Guidance',instruction:'Consider the boundary',reason:'Avoid ambiguity',request_id:'lost-proposal'},'changes'],
+    ]){
+      // The first response is deliberately not used by the retrying caller.
+      await invoke(name,args);
+      const original=f.db.sqlite.prepare(`SELECT * FROM ${table}`).all();
+      const events=f.db.sqlite.prepare('SELECT * FROM events ORDER BY rowid').all();
+      const retry=await invoke(name,args);assert.equal(retry.isError,undefined);assert.equal(retry.structuredContent.id,original[0].id);
+      assert.deepEqual(f.db.sqlite.prepare(`SELECT * FROM ${table}`).all(),original);
+      assert.deepEqual(f.db.sqlite.prepare('SELECT * FROM events ORDER BY rowid').all(),events);
+      assert.equal((await invoke(name,{...args,title:'Changed content'})).isError,true);
+      assert.deepEqual(f.db.sqlite.prepare(`SELECT * FROM ${table}`).all(),original);
+    }
+  }finally{f.db.sqlite.close();}
+});
+
 test('retired March protocol negotiates a supported version and rejects March operational requests',async()=>{
   const service=async()=>{throw Error('No private read');};
   const initialized=await(await handleMcpPost(request(initialization('2025-03-26')),service)).json();

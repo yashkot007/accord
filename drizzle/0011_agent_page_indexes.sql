@@ -1,0 +1,3 @@
+CREATE INDEX `changes_accepted_page` ON `changes` (`to_agent`,`updated_at`,`id`) WHERE "changes"."status"='accepted';--> statement-breakpoint
+CREATE INDEX `host_visits_agent_page` ON `host_visits` (`owner_id`,`agent_id`,`created_at`,`id`);--> statement-breakpoint
+CREATE INDEX `tasks_actionable_page` ON `tasks` (`to_agent`,`created_at`,`id`) WHERE "tasks"."status" IN ('queued','working','needs_input');
