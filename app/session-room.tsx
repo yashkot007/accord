@@ -62,7 +62,7 @@ export default function SessionRoom() {
   }
   useEffect(()=>{if(pageFocus.current){const {id,trigger}=pageFocus.current;if(document.activeElement===trigger||(!trigger?.isConnected&&document.activeElement===document.body))document.getElementById(id)?.focus();pageFocus.current=null;}},[sessions]);
   async function moreSessions(){
-    if(!sessionCursor||paging.current)return;paging.current=true;const request=listRequest.current,trigger=document.activeElement;setLoadingSessions(true);setError('');
+    if(working||loadingSessions||!sessionCursor||paging.current)return;paging.current=true;const request=listRequest.current,trigger=document.activeElement;setLoadingSessions(true);setError('');
     try{const page=await clientRequest(`/api/workspace?catalog=spaces&cursor=${encodeURIComponent(sessionCursor)}`);if(request!==listRequest.current)return;
       if(!page.next_cursor&&page.items.length&&document.activeElement===trigger)pageFocus.current={id:`session-${page.items[0].id}`,trigger};
       setSessions(previous=>[...previous,...page.items.filter((item:Session)=>!previous.some(old=>old.id===item.id))]);setSessionCursor(page.next_cursor);
@@ -152,7 +152,7 @@ export default function SessionRoom() {
           {sessions.length > 0 && <div className="accord-existing" aria-label="Your sessions">
             {sessions.map(item => <Button key={item.id} id={`session-${item.id}`} className="accord-session-row" disabled={working} onClick={() => void perform(() => enter(item.id))}>{item.name}</Button>)}
           </div>}
-          {sessionCursor&&<Button className="accord-session-row" disabled={working||loadingSessions} onClick={()=>void moreSessions()}>{loadingSessions?'Loading…':'More sessions'}</Button>}
+          {sessionCursor&&<Button className="accord-session-row" disabled={working} aria-disabled={working||loadingSessions} onClick={()=>void moreSessions()}>{loadingSessions?'Loading…':'More sessions'}</Button>}
           <form className="accord-form" onSubmit={join}>
             <label htmlFor="invitation-code">Invitation code<Input id="invitation-code" value={code} onChange={e => setCode(e.target.value)} required maxLength={150} placeholder="Paste your invitation code" disabled={working || saved?.view === 'join'} autoComplete="off" autoCapitalize="none" spellCheck={false} /></label>
             {saved?.view === 'join' && !working && <p className="accord-feedback" role="status">You joined. Retry opening your session below.</p>}

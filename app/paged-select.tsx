@@ -37,6 +37,6 @@ export function PagedSelect({ id, name, label, source, optional=false, initialVa
     </select>
     {loading&&<span id={`${id}-status`} className="field-help" role="status">Loading choices…</span>}
     {error&&<p id={`${id}-error`} className="error" role="alert">{error} <button type="button" className="text-button" disabled={loading} onClick={()=>void load(cursor||undefined)}>Try again</button></p>}
-    {cursor&&<button ref={moreButton} type="button" className="text-button" disabled={loading||disabled} onClick={()=>void load(cursor)} aria-label={`More choices for ${label}`}>{loading?'Loading…':'More choices'}</button>}
+    {cursor&&<button ref={moreButton} type="button" className="text-button" disabled={disabled} aria-disabled={loading||disabled} onClick={()=>void load(cursor)} aria-label={`More choices for ${label}`}>{loading?'Loading…':'More choices'}</button>}
   </div>;
 }

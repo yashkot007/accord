@@ -8,4 +8,5 @@
 .guidance-filters{display:flex;gap:20px;margin:0 0 24px}
 .guidance-filters .text-button{min-height:36px;color:var(--muted)}
 .guidance-filters [aria-pressed="true"]{color:var(--blue);text-decoration:underline;text-underline-offset:6px}
+.load-more [aria-disabled="true"],.paged-choice [aria-disabled="true"],.guidance-filters [aria-disabled="true"]{opacity:.6;cursor:wait}
 @media(max-width:720px){.load-more .button{width:100%}.context-summary .card-top{align-items:flex-start;gap:16px}}
