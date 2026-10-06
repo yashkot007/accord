@@ -15,6 +15,7 @@ type AgentProfile = {
   provider: string;
   status: string;
   last_seen_at?: string | null;
+  contact_version: number;
 };
 type ConnectionState = { user:{id:string};profile?:AgentProfile;attached?:boolean;has_profiles?:boolean };
 type Props = { spaceId: string; userId: string; onClose: () => void; onAttached: () => void };
@@ -33,7 +34,7 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
   const copyButton = useRef<HTMLButtonElement>(null);
   const mounted = useRef(false), revision = useRef(0), writing = useRef(false);
   const creation = useRef<Creation | null>(null);
-  const setup = useRef<{ profileId: string; baseline: string | null } | null>(null);
+  const setup = useRef<{ profileId: string; baseline: string | null; baselineVersion: number } | null>(null);
   const [hasProfiles,setHasProfiles]=useState(false);
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const [selectedId, setSelectedId] = useState('');
@@ -103,9 +104,9 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
   }
 
   function recordContact(agent: AgentProfile) {
-    const seen = agent.last_seen_at || null, baseline = setup.current?.baseline || null;
-    // Compare server timestamps, rather than the browser clock or a provider label.
-    const newer = seen && (!baseline || new Date(seen).getTime() > new Date(baseline).getTime());
+    const seen = agent.last_seen_at || null;
+    // The server contact counter remains reliable when timestamps tie or clocks move backward.
+    const newer = seen && agent.contact_version > (setup.current?.baselineVersion ?? agent.contact_version);
     setProfile(agent); setContact(newer ? seen : null);
   }
 
@@ -139,7 +140,7 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
       const checked=await freshState(profileId);if(!current(request))return;
       const candidate=checked.profile;
       if(!candidate||candidate.owner_id!==userId||candidate.status==='revoked')throw new RequestFailure('Choose an available profile owned by your account.',403);
-      if (setup.current?.profileId !== profileId) setup.current = { profileId, baseline: candidate.last_seen_at || null };
+      if (setup.current?.profileId !== profileId) setup.current = { profileId, baseline: candidate.last_seen_at || null, baselineVersion: candidate.contact_version };
       await clientRequest('/api/workspace', 'attach_agent', { space_id: spaceId, agent_id: profileId });
       if (!current(request)) return;
       const state = await freshState(profileId);

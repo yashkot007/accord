@@ -2,7 +2,7 @@
 // recipes, not separate permission systems or evidence of vendor identity.
 export const accordOrigin = 'https://margin-context-mentorship.yashwant7kotipalli.chatgpt.site';
 export const accordMcpUrl = `${accordOrigin}/mcp`;
-export const pluginVersion = '0.2.0';
+export const pluginVersion = '0.2.1';
 
 export const assistants = [
   { id: 'claude', name: 'Claude', profileProvider: 'Claude', aliases: ['claude', 'claude code', 'claude cowork', 'anthropic'],
