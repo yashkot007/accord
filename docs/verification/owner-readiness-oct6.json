@@ -1,0 +1,74 @@
+{
+  "recorded_at": "2026-10-06T19:00:34.364406+00:00",
+  "source": "f46f7ae9f26b1c9b04018cc9802ef63895f3ccaa",
+  "site_version": 44,
+  "deployment_id": "appgdep_6ac5437c3980819198e6ffb935f1c9d5",
+  "transport": "Existing installed private Accord connector in Codex; native authenticated tools, no copied credentials or injected identity",
+  "profile_id": "298a9896-344d-45bc-b2b9-470d9f895544",
+  "calls": [
+    {
+      "tool": "list_my_agents",
+      "result": "success",
+      "profiles": 4,
+      "next_cursor": null,
+      "synthetic_recipient": "connected",
+      "synthetic_advisor": "revoked",
+      "muse_profile": "pending",
+      "instinct_profile": "pending"
+    },
+    {
+      "tool": "read_context",
+      "result": "success",
+      "accepted_records": 2,
+      "next_cursor": null
+    },
+    {
+      "tool": "read_task",
+      "result": "success",
+      "task_id": "e6ad183e-cd57-4409-9517-0866be312f21",
+      "status": "completed",
+      "version": 1,
+      "progress_updates": 1,
+      "next_cursor": null
+    }
+  ],
+  "effects": "No new grant, instruction, proposal, human decision, profile attachment or provider authorization. Profile-specific reads can coalesce routine contact activity.",
+  "scope": "Current deployed release accessibility and durable historical retrieval for the existing owner; private content omitted from this record",
+  "not_established": [
+    "New exchange",
+    "Independent-owner isolation",
+    "Actual human review and later application",
+    "Native Claude/Grok/Muse OAuth",
+    "Granola consent/read",
+    "Owner product approval",
+    "Production latency or capacity"
+  ],
+  "browser": "Chrome automation still reports an open extension UI; rendered current recovery controls are unverified",
+  "subsequent_ui_recovery": {
+    "source_before": "f46f7ae9f26b1c9b04018cc9802ef63895f3ccaa",
+    "source_sha256": {
+      "app/paged-select.tsx": "6692f51e4e7ad6fd168815d3b22ab3c776987e0c3e62083443e47bc2fe7fb5e8",
+      "app/session-room.tsx": "4f34d56033ab0153cc9af161b7fe592a09b9a4e55db871876315e824f342b5d6",
+      "tests/paged-select-recovery.test.mjs": "9a9197ca80ad096ae50a93aeed8c3a86248671bb605819ab86555ba2dd6e961a"
+    },
+    "changes": [
+      "Initial session discovery has explicit Retry without losing invitation input or saved attempts",
+      "Shared load lifecycle rejects duplicate requests and stale completion after close/reopen; paging lock cannot survive into a new dialog lifecycle",
+      "Invalid paged choices explicitly restart without the rejected cursor",
+      "Fresh results preserve verified selection; absent choices stay unusable until later explicit paging verifies them or the person chooses another",
+      "Session and stale-choice errors use ordinary wording"
+    ],
+    "evidence": {
+      "whole_project_tests": 332,
+      "passed": 332,
+      "new_component_tests": 6,
+      "final_choice_wording_targeted_rerun": 6,
+      "existing_session_and_lifecycle_subset": 14,
+      "typescript": "passed; final simple session-message mapper checked again in publishing workflow",
+      "packages": "passed",
+      "diff": "passed"
+    },
+    "test_method": "Actual compiled PagedSelect and clientRequest with synthetic React hook/element host and real local Workspace records; host does not establish actual React reconciliation, DOM layout or browser focus behavior",
+    "remaining": "Rendered Chrome verification and owner acceptance; not established by these tests"
+  }
+}
