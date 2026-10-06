@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bot, Check, Copy, RefreshCw, X } from 'lucide-react';
 import { clientRequest, RequestFailure } from '@/lib/client-request';
+import { assistantFor, assistants, museConnectionRequest, verificationPrompt } from '@/lib/assistant-connections';
+import { AssistantInstallGuide } from './assistant-setup-dialog';
 import './agent-connection-dialog.css';
 
 type AgentProfile = {
@@ -28,6 +30,7 @@ function contactTime(value: string) {
 export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const instructionsField = useRef<HTMLTextAreaElement>(null);
+  const copyButton = useRef<HTMLButtonElement>(null);
   const mounted = useRef(false), revision = useRef(0), writing = useRef(false);
   const creation = useRef<Creation | null>(null);
   const setup = useRef<{ profileId: string; baseline: string | null } | null>(null);
@@ -42,11 +45,14 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
   const [access, setAccess] = useState(false), [error, setError] = useState('');
   const [contact, setContact] = useState<string | null>(null);
   const [copied, setCopied] = useState(false), [copyError, setCopyError] = useState('');
+  const [setupFallback, setSetupFallback] = useState('');
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
 
   const current = (value: number) => mounted.current && revision.current === value;
   const close = () => { if (!writing.current) onClose(); };
 
-  useEffect(() => { if (step === 2) instructionsField.current?.focus(); }, [step]);
+  useEffect(() => { if (step === 2) copyButton.current?.focus(); }, [step]);
+  useEffect(() => { if (instructionsOpen) instructionsField.current?.focus(); }, [instructionsOpen]);
 
   async function freshState() {
     // Bootstrap also ensures the signed-in person exists before creating a profile.
@@ -174,7 +180,9 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
     }
   }
 
-  const instructions = profile ? `Use the authenticated Accord plugin in this assistant. If Accord is not installed or its tools are unavailable, stop and tell me; do not simulate the connection.\n\nCall list_my_agents and confirm the available profile with ID "${profile.id}".\nCall connect_agent(agent_id="${profile.id}").\nThen call read_space(agent_id="${profile.id}", space_id="${spaceId}").\n\nReport whether both calls succeeded. Do not grant authority, send instructions, or modify shared context during setup.` : '';
+  const endpoint = typeof window === 'undefined' ? '' : `${window.location.origin}/mcp`;
+  const recipe = profile ? assistantFor(profile.provider) : null;
+  const instructions = profile ? recipe?.id === 'muse' ? museConnectionRequest(endpoint, profile, spaceId) : verificationPrompt(profile, spaceId) : '';
 
   async function copyInstructions() {
     const request = revision.current;
@@ -183,27 +191,36 @@ export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: 
       await navigator.clipboard.writeText(instructions);
       if (current(request)) setCopied(true);
     } catch {
-      if (current(request)) setCopyError('Select and copy the instructions below. Clipboard access is unavailable.');
+      if (current(request)) { setInstructionsOpen(true); instructionsField.current?.focus(); setCopyError('Select and copy the instructions below.'); }
     }
+  }
+
+  async function copySetup(value: string) {
+    setCopyError(''); setSetupFallback('');
+    try { await navigator.clipboard.writeText(value); setCopied(false); setCopyError('Setup copied. Continue in your assistant.'); }
+    catch { setSetupFallback(value); }
   }
 
   return <dialog ref={dialog} className="agent-connection-dialog" aria-labelledby="agent-connection-title" aria-describedby="agent-connection-description" onCancel={event => {
     if (writing.current) event.preventDefault(); else close();
   }}>
-    <div className="dialog-heading"><div><span className="eyebrow">ACCORD · STEP {step} OF 2</span><h2 id="agent-connection-title">{step === 1 ? 'Connect your agent' : 'Bring your agent in'}</h2></div><button type="button" className="icon-button" aria-label="Close agent connection" disabled={busy} onClick={close}><X size={20} /></button></div>
-    <p id="agent-connection-description" className="agent-connection-description">{step === 1 ? 'Choose a profile, then connect from the assistant you use.' : 'Paste these instructions into your assistant, then check for its contact.'}</p>
+    <div className="dialog-heading"><div><span className="eyebrow">ACCORD · STEP {step} OF 2</span><h2 id="agent-connection-title">{step === 1 ? 'Connect your assistant' : 'Bring your assistant in'}</h2></div><button type="button" className="icon-button" aria-label="Close agent connection" disabled={busy} onClick={close}><X size={20} /></button></div>
+    <p id="agent-connection-description" className="agent-connection-description">{step === 1 ? 'Choose the assistant you want in this room.' : 'Finish setup in your assistant, then check its connection here.'}</p>
 
     {step === 1 && access && <form onSubmit={attach}>
-      {profiles.length > 0 && <fieldset className="agent-connection-choice" disabled={busy || loading}><legend className="sr-only">Agent profile type</legend><label><input type="radio" name="agent-profile-mode" checked={mode === 'existing'} onChange={() => setMode('existing')} /> Existing profile</label><label><input type="radio" name="agent-profile-mode" checked={mode === 'new'} onChange={() => setMode('new')} /> New profile</label></fieldset>}
-      {mode === 'existing' ? <div className="form-field"><label htmlFor="agent-connection-profile">Your agent</label><select id="agent-connection-profile" value={selectedId} disabled={busy || loading} required onChange={event => setSelectedId(event.target.value)}><option value="">Choose an agent</option>{profiles.map(agent => <option key={agent.id} value={agent.id}>{agent.name} · {agent.provider}</option>)}</select></div> : <><div className="form-field"><label htmlFor="agent-connection-name">Agent name</label><input id="agent-connection-name" value={name} required maxLength={80} disabled={busy || !!createdId} placeholder="e.g. My thinking partner" onChange={event => setName(event.target.value)} /></div><div className="form-field"><label htmlFor="agent-connection-provider">Assistant or provider</label><input id="agent-connection-provider" value={provider} required maxLength={80} disabled={busy || !!createdId} placeholder="e.g. OpenAI dot" onChange={event => setProvider(event.target.value)} /></div>{createdId && <p className="agent-connection-hint">Your profile is saved. Retrying uses the same profile.</p>}</>}
-      <p className="agent-connection-hint">This agent can read the room’s shared context. Guidance permissions are granted separately.</p>
+      {profiles.length > 0 && <fieldset className="agent-connection-choice" disabled={busy || loading}><legend className="sr-only">Agent profile type</legend><label><input type="radio" name="agent-profile-mode" checked={mode === 'existing'} onChange={() => setMode('existing')} /> Existing assistant</label><label><input type="radio" name="agent-profile-mode" checked={mode === 'new'} onChange={() => setMode('new')} /> Add an assistant</label></fieldset>}
+      {mode === 'existing' ? <div className="form-field"><label htmlFor="agent-connection-profile">Your agent</label><select id="agent-connection-profile" value={selectedId} disabled={busy || loading} required onChange={event => setSelectedId(event.target.value)}><option value="">Choose an agent</option>{profiles.map(agent => <option key={agent.id} value={agent.id}>{agent.name} · {agent.provider}</option>)}</select></div> : <><div className="form-field"><label htmlFor="agent-connection-name">Name</label><input id="agent-connection-name" value={name} required maxLength={80} disabled={busy || !!createdId} placeholder="e.g. My thinking partner" onChange={event => setName(event.target.value)} /></div><div className="form-field"><label htmlFor="agent-connection-provider">Your assistant</label><select id="agent-connection-provider" value={provider} required disabled={busy || !!createdId} onChange={event => setProvider(event.target.value)}><option value="">Choose your assistant</option>{assistants.map(item => <option key={item.id} value={item.profileProvider}>{item.name}</option>)}</select></div>{createdId && <p className="agent-connection-hint">Profile saved. Try adding it again.</p>}</>}
+      <p className="agent-connection-hint">Your assistant can read what’s shared here. Work permissions are separate.</p>
       <div className="dialog-actions"><button type="button" className="button secondary" disabled={busy} onClick={close}>Cancel</button><button type="submit" className="button primary" disabled={busy || loading || (mode === 'existing' ? !selectedId : !name.trim() || !provider.trim())}>{busy ? 'Adding agent…' : createdId ? 'Retry adding to room' : 'Add to room'}</button></div>
     </form>}
 
     {step === 2 && profile && access && <><div className="agent-connection-profile"><Bot size={21} /><div><strong>{profile.name}</strong><span>{profile.provider}</span></div><span className="agent-connection-attached">In this room</span></div>
-      <section className="agent-connection-instructions" aria-label="Instructions for your assistant"><label htmlFor="agent-connection-instructions">In your assistant</label><textarea ref={instructionsField} id="agent-connection-instructions" value={instructions} readOnly rows={7} spellCheck={false} /><button type="button" className="button secondary" onClick={copyInstructions}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Instructions copied' : 'Copy instructions'}</button>{copyError && <p role="status" className="agent-connection-hint">{copyError}</p>}</section>
-      <div className={`agent-connection-contact${contact ? ' received' : ''}`} role="status"><span className="agent-connection-dot" /><div><strong>{contact ? 'Authenticated contact received' : 'Awaiting agent contact'}</strong><p>{contact ? contactTime(contact) : setup.current?.baseline ? `Earlier contact: ${contactTime(setup.current.baseline)}. Waiting for a new check-in.` : 'No authenticated contact has been recorded for this profile.'}</p></div></div>
-      <p className="agent-connection-hint">Contact confirms a call for this profile, not its provider identity or a successful room read. Your assistant reports the room read.</p>
+      {recipe?.id !== 'muse' && <AssistantInstallGuide recipe={recipe!} endpoint={endpoint} profile={profile} spaceId={spaceId} onCopy={value => void copySetup(value)}/>}
+      {setupFallback && <div className="form-field"><label htmlFor="agent-setup-copy">Select and copy</label><textarea id="agent-setup-copy" value={setupFallback} readOnly rows={5}/></div>}
+      <details className="muse-connection-details"><summary>Connection address</summary><input aria-label="Accord connection address" value={typeof window === 'undefined' ? '' : `${window.location.origin}/mcp`} readOnly/></details>
+      <section className="agent-connection-instructions" aria-label="Instructions for your assistant"><button ref={copyButton} type="button" className="button primary" onClick={copyInstructions}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copied' : recipe?.id === 'muse' ? 'Copy setup instructions' : 'Copy verification prompt'}</button><details className="muse-connection-details" open={instructionsOpen} onToggle={event=>setInstructionsOpen(event.currentTarget.open)}><summary>View instructions</summary><textarea ref={instructionsField} id="agent-connection-instructions" aria-label="Instructions for your assistant" value={instructions} readOnly rows={7} spellCheck={false} /></details>{copyError && <p role="status" className="agent-connection-hint">{copyError}</p>}</section>
+      <div className={`agent-connection-contact${contact ? ' received' : ''}`} role="status"><span className="agent-connection-dot" /><div><strong>{contact ? 'Contact received' : 'Waiting for your assistant'}</strong><p>{contact ? contactTime(contact) : setup.current?.baseline ? `Last contact: ${contactTime(setup.current.baseline)}` : 'Copy the instructions, then continue in your assistant.'}</p></div></div>
+      <p className="agent-connection-hint">Your assistant will confirm whether it could read this room.</p>
     </>}
 
     {step === 2 && <div className="dialog-actions"><button type="button" className="button secondary" disabled={loading} onClick={checkContact}><RefreshCw size={16} />{loading ? 'Checking…' : 'Check contact'}</button><button type="button" className="button primary" onClick={close}>Done</button></div>}

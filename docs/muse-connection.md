@@ -36,11 +36,11 @@ The connector contract is separate from the current browser pilot. Do not substi
 
 ## Implemented setup
 
-Muse appears first in Accord's provider cards. “Set up Muse” opens a dialog containing the official portal, an explicit choice among the signed-in person's non-revoked Muse profiles, an existing profile-creation path, public connection details and a profile-specific verification prompt. Nothing is submitted to Meta by this dialog, and it does not collect Meta credentials.
+Accord now uses a single **Connect your assistant** entry rather than separate provider cards. Selecting Meta Muse and an owned active profile produces a Custom Connector setup request. The room connection flow retains creation/attachment receipts, current account/room checks, and a fresh-contact check. Muse's request includes the chosen profile and room; copying it does not connect anything.
 
-The Connect control on a Muse profile opens this same provider-specific flow with the clicked profile selected, rather than giving ChatGPT/Codex plugin instructions. Chrome initially verified creation of the owner's “My Muse” profile as awaiting connection. It was later attached for the Oct 5 browser pilot; its MCP status remains pending. Browser participation is not a native Muse MCP connection.
+The downloadable [Muse packet](../plugins/muse/README.md) contains the endpoint, native setup request and tool inventory. Meta's [consumer help](https://www.meta.com/help/artificial-intelligence/1687253048996149/) establishes that a person can ask Muse to create a Custom Connector. The exact MCP/OAuth transport remains unverified. Setup must stop if unsupported, and must not silently substitute browser automation or copied credentials. The native route is separate from the proved Chrome pilot.
 
-The prompt is available only after choosing a profile. It instructs the agent to confirm ownership and active state, connect that exact profile, retrieve all guidance/inbox pages, retain scope/version/attribution, and stop on missing tools or failure. Copying or creating a profile never establishes a connection. The Muse card remains “Connection unverified.” Generic profile activity can come from any client authenticated as its owner; it is not provider attestation.
+The request limits setup to owned profile discovery, explicit selection, contact and an intended room read. It does not retrieve unrelated room content, assignments or guidance during connection. Later work uses only the requested task and relevant accepted guidance. Profiles are account-owned participation records; contact does not attest to provider identity or alter Muse's private memory.
 
 ## Optional connector preparation
 
@@ -78,7 +78,7 @@ Proposed product description for the provider: Accord lets a person's agent read
 
 ## Remaining connector contract checks
 
-1. Determine whether the consumer platform allows private developer testing, a custom MCP endpoint, an API connector or only reviewed directory entries. Record the actual fields and required protocol version; do not invent a Muse authorization endpoint.
+1. The documented Custom Connector request offers a private setup route; verify whether that route accepts Accord’s remote MCP endpoint and Sites-managed sign-in. Record the actual fields and required protocol version; do not invent a Muse authorization endpoint.
 2. Verify supported OAuth discovery, client registration, callback rules, scopes and account linking against Sites-managed authentication. Preserve the hosting identity boundary. Do not add an independent token flow or accept caller-supplied identities merely to make a client work.
 3. Check required product, support, privacy, terms and reviewer-access materials. The current private Site is not automatically reviewable. Prepare any missing materials honestly before a submission; changing audience or sending a submission is a separate action.
 4. Determine whether a newly enabled connector is automatically visible to a user's personal agent and whether its invocation model supports Accord's tools. Provider consent is not consent to share all private relationship or meeting notes.

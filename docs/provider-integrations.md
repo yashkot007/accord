@@ -1,13 +1,15 @@
 # Accord provider connections
 
-Updated 2026-10-05. This describes the implementation and its evidence, not universal personal-agent compatibility. Owner POC acceptance and two-person testing remain open.
+Updated 2026-10-05. This describes the implementation and its evidence, not universal personal-agent compatibility. Owner POC acceptance and two-person testing remain open. [Connection packages](agent-plugins.md) use one service with provider-specific installation recipes.
 
 | Provider | Current implementation | Remaining verification |
 | --- | --- | --- |
+| Claude | Uploadable private plugin and repo marketplace; manifest validation passes in installed Claude Code 2.1.140 | Actual Sites OAuth, tool discovery and exchange in Claude |
+| Grok Bot | Shared-marketplace format candidate and custom Remote HTTPS setup packet | Actual Bot installation/OAuth; ZIP import is not established |
 | Granola | Browser OAuth start and dynamic registration verified on the private Site; encrypted server-side credentials, discovered read-only MCP tools, private previews and person-selected excerpt imports implemented | Real consent/callback, actual tool schemas, note reads, expiry and disconnect with a consenting account |
 | OpenAI dots | Real profile discovery, connection and room read verified; the existing dot retrieved Muse's synthetic task and saved a completed version 1 report through MCP on private Site version 31. See the [pilot result](dots-pilot.md) | Human-reviewed guidance and later reuse, independent-owner isolation and automatic invocation remain unverified by this exchange |
-| Meta Muse | Actual consumer Muse assigned one task through the authenticated local Chrome room and read the dot's saved answer back on 2026-10-05; the work-only test grant was revoked | This one-owner, manually triggered browser route does not establish native Muse MCP access, provider attestation or independent-owner isolation. See [Muse setup record](muse-connection.md) |
-| Instinct | Dedicated setup dialog, official account entry, owned profile selection, connection details and conditional verification prompt | Supported custom integration method, actual authorization and agent calls; see [Instinct setup record](instinct-connection.md) |
+| Meta Muse | Custom Connector setup packet plus actual consumer Muse assigned one task through the authenticated local Chrome room and read the dot's saved answer back on 2026-10-05; the work-only test grant was revoked | This one-owner, manually triggered browser route does not establish native Muse MCP access, provider attestation or independent-owner isolation. See [Muse setup record](muse-connection.md) |
+| Instinct | Unified assistant picker, owned profile selection, public connection address and verification prompt | Supported custom integration method, actual authorization and agent calls; see [Instinct setup record](instinct-connection.md) |
 
 ## Granola connection contract
 
@@ -25,13 +27,13 @@ Reading creates an encrypted private preview with a 20-minute application expiry
 
 [dots documentation](https://learn.chatgpt.com/docs/dots/computers-and-apps) describes using supported plugins enabled for its account. Accord offers setup instructions for that path; it does not control a person's dot or write its private memory. A provider profile only organizes Accord participation and is not an independently credentialed agent.
 
-The owner prioritized Muse on 2026-10-01. Chrome verified that “Submit a connector” on the [Meta Muse connector platform](https://muse.ai/platform) opens a work-email sign-in before showing technical requirements. Accord provides a dedicated setup dialog and [preparation record](muse-connection.md); the public endpoint, selected owned profile and verification prompt do not create provider access. Public consumer protocol details and Accord approval have not been established. Muse Code documentation describes a separate product and is not evidence of personal Muse compatibility.
+All assistant setup now begins with **Connect your assistant**. Provider recipes choose Claude's uploadable plugin, Grok Bot's custom remote server, Muse's Custom Connector request, the existing OpenAI plugin or another compatible remote MCP client. Exact profile selection and real authenticated calls remain required. Instinct stays conditional because its public documentation does not establish an inbound MCP contract.
 
-The owner also requested Instinct. The personal assistant at [instinct.com](https://instinct.com/) has an official account entry at [app.instinct.com/login](https://app.instinct.com/login). Accord now provides [Instinct preparation](instinct-connection.md) alongside Muse. Public documentation does not establish an inbound MCP or custom connector contract; third-party application access described by Instinct is not proof of Accord compatibility. No Instinct account authorization or agent call has been verified.
+Meta's [consumer Muse help](https://www.meta.com/help/artificial-intelligence/1687253048996149/) describes asking Muse to create a Custom Connector when a service is absent. That private route is separate from reviewed [directory submission](https://muse.ai/platform). Its transport and OAuth compatibility with Accord still require verification. Muse Code and Meta Model API documentation are separate products.
 
 ## Local evidence and next live check
 
-The complete local suite has 137 passing tests, including synthetic Granola authorization, owner separation, private preview/import, duplicate recovery, late disconnection, refresh concurrency/abandonment, split SSE frames, redirect rejection, unsupported input, oversized response and HTTP origin/authentication checks. TypeScript checking must accompany runtime edits. Local backup tests preserve all 19 tables; provider fixtures are opaque synthetic records, not evidence of decryptable production credentials or OAuth recovery.
+Earlier verification established 137 passing local tests, including synthetic Granola authorization, owner separation, private preview/import, duplicate recovery, late disconnection, refresh concurrency/abandonment, split SSE frames, redirect rejection, unsupported input, oversized response and HTTP origin/authentication checks. TypeScript checking must accompany runtime edits. Local backup tests preserve all 19 tables; provider fixtures are opaque synthetic records, not evidence of decryptable production credentials or OAuth recovery.
 
 The first private publication added the new controls successfully, but Granola authorization start failed on the public resource-metadata request with a runtime redirect error. No consent, tokens or notes were obtained. Sanitized diagnostics record only the fixed endpoint category, HTTP status or exception class and a bounded reason category; no upstream URL, text, headers or account content is logged. Requests use manual redirect mode and explicitly reject non-success responses without following them.
 

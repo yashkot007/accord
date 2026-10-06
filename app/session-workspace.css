@@ -26,4 +26,41 @@
 .session-unavailable p{color:var(--muted);margin:14px 0 24px}
 .accord-session-workspace .agent-avatar,.accord-session-workspace .person-avatar,.accord-session-workspace .source-icon{background:#e7f0eb;color:var(--blue)}
 .accord-session-workspace .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.accord-session-workspace main{max-width:888px;padding-top:64px}
+.accord-session-workspace .topbar{padding-inline:max(24px,calc((100vw - 840px)/2));justify-content:space-between;background:transparent;backdrop-filter:none;border-color:#d4e1dc80}
+.session-wordmark{font-size:1.5rem;letter-spacing:-.065em;font-weight:650}
+.accord-session-workspace .room-heading{align-items:flex-start;gap:28px;margin-bottom:22px}
+.accord-session-workspace .room-heading h1{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.2;margin-top:12px;overflow-wrap:anywhere}
+.room-purpose{margin-top:16px;color:var(--muted);font-size:.875rem}
+.room-purpose summary{cursor:pointer;list-style:none;display:inline-block;border-bottom:1px dotted #8a9d94;padding-bottom:2px}
+.accord-session-workspace .room-purpose p{font-size:.9375rem;line-height:1.7;margin-top:12px}
+.room-presence{display:flex;align-items:center;flex-wrap:wrap;gap:24px;color:var(--muted);font-size:.8125rem;margin-bottom:28px}
+.room-presence>span,.room-presence .text-button{display:inline-flex;align-items:center;gap:7px;font-size:.8125rem}
+.room-review-link{color:var(--blue);font-weight:500;margin-left:auto}
+.accord-session-workspace .room-tabs{gap:32px;margin-bottom:32px;border-color:#d4e1dc}
+.room-work-card{border:1px solid var(--line);border-radius:16px;margin-bottom:14px;background:#ffffffc9;overflow:hidden;transition:border-color .16s ease,box-shadow .16s ease}
+.room-work-card:hover{border-color:#a9c3b5;box-shadow:0 5px 22px #172c2b07}
+.room-work-open{display:block;width:100%;padding:24px;text-align:left;color:var(--ink);background:transparent;border:0;font:inherit;cursor:pointer}
+.room-work-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.room-work-meta>span:first-child{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted)}
+.room-work-open h3{font-size:1.05rem;line-height:1.5;font-weight:550;letter-spacing:-.02em;margin-bottom:10px}
+.room-work-preview{font-size:.875rem;line-height:1.7;color:var(--muted);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-line}
+.room-work-date{display:flex;align-items:center;justify-content:space-between;margin-top:18px;font-size:.75rem;color:var(--muted)}
+.room-work-date>span{display:flex;align-items:center;gap:6px;color:var(--blue)}
+.room-work-footer{border-top:1px solid #d4e1dc80;padding:10px 24px;color:var(--muted);font-size:.75rem}
+.room-work-footer .text-button{font-size:.8125rem}
+.accord-session-workspace .section-heading h2{font-size:1rem;letter-spacing:-.02em}
+.accord-session-workspace .room-sources{margin-bottom:40px}
+.accord-session-workspace .body-copy,.accord-session-workspace .feedback p,.accord-session-workspace .context-diff p,.accord-session-workspace .reason p{color:var(--muted)}
+.accord-session-workspace .badge.completed,.accord-session-workspace .badge.accepted,.accord-session-workspace .badge.connected{background:#e8f2eb;color:#34584a;border-color:#cedfd3}
+.accord-session-workspace .badge{font-size:.6875rem;padding:4px 8px}
+.room-work-open:focus-visible,.room-purpose summary:focus-visible{outline:2px solid var(--blue);outline-offset:-4px;border-radius:12px}
+.accord-session-workspace .tabs{overflow-y:hidden}
+.accord-session-workspace .text-button{color:var(--blue)}
+.accord-session-workspace h1[tabindex="-1"]:focus{outline:none}
+.disconnected-assistants{margin:24px 0;color:var(--muted);font-size:.875rem}
+.disconnected-assistants summary{cursor:pointer}
+.disconnected-assistants p{margin:10px 0}
+@media(prefers-reduced-motion:reduce){.room-work-card{transition:none}}
+@media(max-width:720px){.accord-session-workspace .room-heading{flex-direction:column;gap:22px}.room-work-open{padding:20px}.room-work-meta{align-items:flex-start}.room-presence{gap:18px}.room-review-link{margin-left:0}}
 @media(max-width:720px){.accord-session-workspace .topbar{padding:14px 20px;gap:10px}.session-tools{gap:14px}.accord-session-workspace main{padding:32px 20px 48px}.accord-session-workspace .overview-grid,.accord-session-workspace .connection-grid{grid-template-columns:1fr}.accord-session-workspace .page-heading{gap:20px}.accord-session-workspace .tabs{gap:22px}.accord-session-workspace .agent-node{display:flex;flex-wrap:wrap}}

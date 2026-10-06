@@ -18,7 +18,7 @@ The public `/.well-known/accord.json` describes the agent entrance without expos
 
 ## Working room and backend features
 
-The simplified entrance exposes session creation, reopening, and joining. Inside a room, existing controls support shared context, work, guidance review, people, authority, invitations, and agent setup. The full dashboard and illustrative example remain part of the archived POC.
+The simplified entrance exposes session creation, reopening, and joining. Inside a room, Work is the default; Guidance and Settings reveal the remaining controls when needed. The full dashboard and illustrative example remain part of the archived POC.
 
 - ChatGPT sign-in with server-enforced account and space membership.
 - Durable spaces, agent profiles, shared notes, permissions, instructions, context reviews, and activity in D1.
@@ -36,9 +36,9 @@ Unused invitations created before issuer tracking was introduced require a fresh
 
 ## Connect an assistant
 
-After publishing, use the ChatGPT account and workspace where the Site was created. Open its private plugin in ChatGPT or Codex under **Plugins → Personal → Created by you**, then install/connect it. If the plugin is missing, first check the account and workspace; the Personal directory in an organization workspace is not evidence that the owner’s personal plugin is available there. Authenticate the connection with the account that owns the agent profile. Have the assistant list your existing profiles and connect the matching one. Inside a room, **Agent settings** creates profiles and shows connection instructions. Return to the room and use **People & authority → Add agent** to attach your profile. A profile or attachment alone does not establish a live agent connection. Existing profiles and attachments remain available to authenticated tools.
+Inside a room, choose **Connect your assistant**. Select or create a profile, add it to the room, then complete the installation and account sign-in in your assistant. The same service supports provider-specific setup packages for Claude, Grok Bot and Muse, plus the existing OpenAI plugin and compatible remote MCP clients. See [packages and verified status](docs/agent-plugins.md). Installing a package or creating a profile does not establish a connection.
 
-Other clients must support authenticated remote MCP with the Site’s OAuth flow. The endpoint is the Site’s origin followed by `/mcp`. Provider-specific support must be tested; entering a provider name in the UI does not establish an integration.
+The room opens on **Work**, with **Guidance** and **Settings** alongside it. Notes, people and permissions live in Settings. Setup details stay behind disclosures. Completed exchanges keep their completed status when permission is later revoked; full reports and history open on request.
 
 Tools: `arrive_at_accord`, `consult_host`, `enter_room`, `leave_accord`, `list_sessions`, `list_my_agents`, `connect_agent`, `list_spaces`, `read_space`, `read_context_change`, `read_task`, `read_inbox`, `send_instruction`, `report_progress`, `propose_context_change`, and `read_context`.
 
@@ -59,7 +59,7 @@ The connection authenticates a **person**, not an independently credentialed age
 - Permissions apply to named spaces and operations. The system does not classify whether arbitrary instruction text semantically belongs to a subject.
 - Granola OAuth, private note previews and selected excerpt sharing are implemented. Real account consent and a notes read remain unverified; this is an import, not continuous sync. See [provider connections](docs/provider-integrations.md).
 - The [dot + Muse pilot](docs/dots-pilot.md) completed a real exchange: consumer Muse assigned a synthetic task through signed-in local Chrome, the existing OpenAI dot retrieved it and saved a completed version 1 report through Accord's MCP tools, and Muse read that saved answer back. The test used one owner and manual invocation. Its temporary work-only grant was revoked afterward; independent-owner isolation, automatic wake-ups, and guidance review/reuse remain unverified by this exchange.
-- Muse has profile selection, connection details and a verification prompt in setup. Its browser route is verified; a native Muse MCP connection remains unverified and the profile still shows Awaiting connection. See the [Muse setup record](docs/muse-connection.md). Instinct has its own [setup flow](docs/instinct-connection.md) and official account entry; its connector support and real invocation remain unverified.
+- Muse has a native Custom Connector preparation packet in the unified assistant flow. Its browser route is verified; a native Muse MCP connection remains unverified and the profile still shows Awaiting connection. See the [Muse setup record](docs/muse-connection.md). Instinct remains conditional in the same [setup flow](docs/instinct-connection.md); its connector support and real invocation remain unverified.
 - Dedicated classroom management and other domain-specific workflows remain future features. The underlying data model supports multiple participants and directional connections.
 - The Site remains private until its owner changes sharing. This is an experimental first implementation, not a public launch.
 
