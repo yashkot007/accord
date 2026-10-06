@@ -1,0 +1,1327 @@
+{
+  "kind": "synthetic-local-worker-d1-evidence",
+  "date": "2026-10-05",
+  "production_capacity_claim": false,
+  "previous_committed_source": "10dc0e8ed161573a340ba27054ceef80e2c65617",
+  "baseline_contact_probe": {
+    "created_at": "2026-10-06T06:01:07.731Z",
+    "source_hashes": {
+      "lib/workspace.ts": "a489f3e69f82d5c8c9e9b27ab2364e2e4f29aec2f5d4a4b854e2014858ea8ca7",
+      "lib/mcp-http.ts": "a7268652853abeeebe8ee084bb260b003b2331516c6cc75d7c5fbd7c5a126516",
+      "lib/host.ts": "dbd6b9d72dd85a731e04fcaf15acd33fa7eedf1505c00f2329f85982f8cae665"
+    },
+    "environment": {
+      "node": "v24.10.0",
+      "miniflare": "4.20260515.0",
+      "backend": "Miniflare workerd with local D1",
+      "binding": "fresh synthetic-only DB",
+      "external_worker_fetch": "disabled",
+      "migrations": 14
+    },
+    "configuration": {
+      "rows": 8,
+      "reads": 60,
+      "writes": 8,
+      "concurrency": [
+        1,
+        8,
+        24
+      ],
+      "revision": "10dc0e8",
+      "contactOnly": true
+    },
+    "summary": {
+      "description": "10 sequential real MCP read_context calls, limit=1, synthetic contact initially pending with last_seen_at null",
+      "requests": 10,
+      "p50_ms": 4.432000000000016,
+      "p95_ms": 10.336750000000166,
+      "payload_p50_bytes": 17828,
+      "payload_p95_bytes": 17829,
+      "statements": 30,
+      "statements_p50": 3,
+      "statements_p95": 3,
+      "round_trips": 30,
+      "write_statements": 10,
+      "agent_update_statements": 10,
+      "agent_rows_changed": 10,
+      "observed_rows_read": 110,
+      "rows_read_p50": 11,
+      "rows_read_p95": 11,
+      "observed_rows_written": 10
+    },
+    "correctness": {
+      "pagination": "Skipped for contact-only probe",
+      "mcp_text_matches_structured_content": true
+    },
+    "limitations": [
+      "Local timings include asynchronous Miniflare dispatchFetch bridge and response serialization. They do not establish production capacity.",
+      "No production traffic, identities, tokens, deployment, or remote bindings. Worker external fetches are rejected.",
+      "Auth is replaced by an explicit synthetic-only role selector in this isolated harness. Production auth, edge network, cold starts, billing, remote D1 quotas, and geographic replication are unmeasured.",
+      "Query counts are exact application statement executions. round_trips count binding calls and batch submissions, not production network hops.",
+      "To expose actual D1 metadata, the instrumentation executes first() SQL with all() and projects the first row. This preserves the tested Workspace calls but includes all() result materialization in timings.",
+      "Payload bytes count the complete JSON-RPC response body; MCP text plus structuredContent duplicate record data.",
+      "Runs use one local D1 database; later scenarios include completed synthetic writes from earlier scenarios.",
+      "Latency starts after admission by the local concurrency limiter, excludes time waiting in its queue, and includes the full response body read. Percentiles use nearest rank; ten-request contact p95 is its maximum and includes its first request."
+    ]
+  },
+  "fixtures": [
+    {
+      "created_at": "2026-10-06T06:03:58.735Z",
+      "source_mode": "working tree",
+      "source_hashes": {
+        "lib/workspace.ts": "c91ec7ddcd391f9089ec7255351428ea8e1ab942eed7106e5e15f7c29f1060ea",
+        "lib/mcp-http.ts": "317da19fb83f8d71a7668250bbe6b97ed4086199b2e9e4289378643823ff4da6",
+        "lib/host.ts": "462016ea02b967d789c3293840d0bf294db8a603d7f9a8df918b15a9f4737ee3"
+      },
+      "environment": {
+        "node": "v24.10.0",
+        "miniflare": "4.20260515.0",
+        "backend": "Miniflare workerd with local D1",
+        "binding": "fresh synthetic-only DB",
+        "external_worker_fetch": "disabled",
+        "migrations": 15
+      },
+      "configuration": {
+        "rows": 250,
+        "reads": 90,
+        "writes": 12,
+        "concurrency": [
+          1,
+          8,
+          24
+        ],
+        "revision": null,
+        "contactOnly": false
+      },
+      "fixture": {
+        "rows_per_collection": 250,
+        "members": 252,
+        "agents": 252,
+        "sources": 250,
+        "tasks": 250,
+        "changes": 250,
+        "grants": 251,
+        "accepted_context": 125,
+        "actionable_inbox": 125,
+        "source_content_characters": 19924,
+        "task_body_characters": 8000,
+        "adopted_context_characters": 5000
+      },
+      "room_before_source_fix": {
+        "source_hashes": {
+          "lib/workspace.ts": "17af31f6c62c1023ddae28288319ed055bb5f703c0ba90912cab61d19d36ad64",
+          "lib/mcp-http.ts": "317da19fb83f8d71a7668250bbe6b97ed4086199b2e9e4289378643823ff4da6",
+          "lib/host.ts": "462016ea02b967d789c3293840d0bf294db8a603d7f9a8df918b15a9f4737ee3"
+        },
+        "statements": 10
+      },
+      "contact_probe": {
+        "description": "10 sequential real MCP read_context calls, limit=1, synthetic contact initially pending with last_seen_at null",
+        "requests": 10,
+        "p50_ms": 2.0298749999999472,
+        "p95_ms": 3.037875000000099,
+        "payload_p50_bytes": 17829,
+        "payload_p95_bytes": 17829,
+        "statements": 21,
+        "statements_p50": 2,
+        "statements_p95": 3,
+        "round_trips": 21,
+        "write_statements": 1,
+        "agent_update_statements": 1,
+        "agent_rows_changed": 1,
+        "observed_rows_read": 102,
+        "rows_read_p50": 10,
+        "rows_read_p95": 12,
+        "observed_rows_written": 1
+      },
+      "room_query_probe": {
+        "statements": 10,
+        "round_trips": 10,
+        "write_statements": 0,
+        "agent_update_statements": 0,
+        "agent_rows_changed": 0,
+        "rows_written": 0,
+        "rows_read": 282,
+        "meta_results": 10,
+        "trace": [
+          {
+            "sql": "SELECT * FROM agents WHERE id=? AND owner_id=?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 1,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT s.*,m.role,m.membership_key FROM spaces s JOIN members m ON m.space_id=s.id JOIN space_agents sa ON sa.space_id=s.id AND sa.agent_id=? JOIN agents a ON a.id=sa.agent_id AND a.owner_id=m.user_id AND a.status<>'revoked' WHERE s.id=? AND m.user_id=?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 5,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT m.user_id AS id,m.user_id,m.role,p.name,p.email FROM members m LEFT JOIN people p ON p.id=m.user_id WHERE m.space_id=? ORDER BY m.user_id LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 42,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT a.id,a.name,a.provider,a.status,a.owner_id,a.last_seen_at,a.contact_version,p.name AS owner_name FROM space_agents sa JOIN agents a ON a.id=sa.agent_id LEFT JOIN people p ON p.id=a.owner_id WHERE sa.space_id=? ORDER BY sa.agent_id LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 63,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT g.id,g.space_id,g.from_agent,g.to_agent,g.scope,g.allow_assign,g.allow_context,g.status,g.expires_at,g.created_at FROM grants g WHERE g.space_id=? ORDER BY g.created_at DESC,g.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT src.id,src.space_id,CASE WHEN src.status='active' THEN src.title ELSE 'Withdrawn source' END AS title,CASE WHEN src.status='active' THEN src.kind ELSE 'Unavailable' END AS kind,src.status,src.version,src.created_at,src.updated_at FROM sources src WHERE src.space_id=? ORDER BY src.created_at DESC,src.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT t.id,t.space_id,t.grant_id,t.from_agent,t.to_agent,t.title,t.status,t.version,t.channel,t.created_at,t.updated_at FROM tasks t WHERE t.space_id=? ORDER BY t.created_at DESC,t.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 1,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT c.id,c.space_id,c.grant_id,c.from_agent,c.to_agent,c.title,c.scope,c.status,c.version,c.source_id,c.created_at,c.updated_at,CASE WHEN c.source_id IS NULL THEN NULL WHEN src.id IS NULL THEN 'missing' ELSE src.status END AS source_status,src.version AS source_version FROM changes c LEFT JOIN sources src ON src.id=c.source_id AND src.space_id=c.space_id WHERE c.space_id=? ORDER BY c.created_at DESC,c.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT e.id,e.space_id,e.kind,e.description,e.created_at,p.name AS actor_name FROM events e LEFT JOIN people p ON p.id=e.actor_id WHERE e.space_id=? ORDER BY e.created_at DESC,e.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 42,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT s.membership_version,s.context_revision,m.membership_key,src.id, CASE WHEN src.status='active' THEN src.title ELSE 'Withdrawn source' END AS title, CASE WHEN src.status='active' THEN src.kind ELSE 'Unavailable' END AS kind, src.status,src.version,src.updated_at FROM spaces s JOIN members m ON m.space_id=s.id JOIN space_agents sa ON sa.space_id=s.id AND sa.agent_id=? JOIN agents a ON a.id=sa.agent_id AND a.owner_id=m.user_id AND a.status<>'revoked' LEFT JOIN json_each(?) requested ON TRUE LEFT JOIN sources src ON src.id=requested.value AND src.space_id=s.id WHERE s.id=? AND m.user_id=?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 256,
+              "changed_db": false,
+              "size_after": 13635584,
+              "rows_read": 45,
+              "rows_written": 0
+            }
+          }
+        ],
+        "final_source_lookup_plan": [
+          {
+            "id": 11,
+            "parent": 0,
+            "notused": 46,
+            "detail": "SEARCH s USING INDEX sqlite_autoindex_spaces_1 (id=?)"
+          },
+          {
+            "id": 18,
+            "parent": 0,
+            "notused": 47,
+            "detail": "SEARCH m USING INDEX sqlite_autoindex_members_1 (space_id=? AND user_id=?)"
+          },
+          {
+            "id": 27,
+            "parent": 0,
+            "notused": 45,
+            "detail": "SEARCH sa USING COVERING INDEX sqlite_autoindex_space_agents_1 (space_id=? AND agent_id=?)"
+          },
+          {
+            "id": 35,
+            "parent": 0,
+            "notused": 61,
+            "detail": "SEARCH a USING INDEX agents_owner (owner_id=? AND id=?)"
+          },
+          {
+            "id": 45,
+            "parent": 0,
+            "notused": 0,
+            "detail": "SCAN requested VIRTUAL TABLE INDEX 1: LEFT-JOIN"
+          },
+          {
+            "id": 54,
+            "parent": 0,
+            "notused": 46,
+            "detail": "SEARCH src USING INDEX sqlite_autoindex_sources_1 (id=?) LEFT-JOIN"
+          }
+        ]
+      },
+      "scenarios": [
+        {
+          "concurrency": 1,
+          "peak_inflight_requests": 1,
+          "elapsed_ms": 792.9658749999999,
+          "requests_per_second": 174.0301876168379,
+          "requests": 138,
+          "p50_ms": 4.35287500000004,
+          "p95_ms": 6.547665999999936,
+          "payload_p50_bytes": 93304,
+          "payload_p95_bytes": 341114,
+          "statements": 1021,
+          "statements_p50": 8,
+          "statements_p95": 18,
+          "round_trips": 973,
+          "write_statements": 73,
+          "agent_update_statements": 1,
+          "agent_rows_changed": 1,
+          "observed_rows_read": 17714,
+          "rows_read_p50": 105,
+          "rows_read_p95": 282,
+          "observed_rows_written": 205,
+          "operations": {
+            "read_inbox": {
+              "requests": 30,
+              "p50_ms": 3.7238749999999072,
+              "p95_ms": 5.716750000000047,
+              "payload_p50_bytes": 341114,
+              "payload_p95_bytes": 341114,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 5070,
+              "rows_read_p50": 169,
+              "rows_read_p95": 169,
+              "observed_rows_written": 0
+            },
+            "send_instruction": {
+              "requests": 24,
+              "p50_ms": 3.4854589999999916,
+              "p95_ms": 6.054958000000056,
+              "payload_p50_bytes": 229,
+              "payload_p95_bytes": 229,
+              "statements": 217,
+              "statements_p50": 8,
+              "statements_p95": 10,
+              "round_trips": 205,
+              "write_statements": 25,
+              "agent_update_statements": 1,
+              "agent_rows_changed": 1,
+              "observed_rows_read": 386,
+              "rows_read_p50": 13,
+              "rows_read_p95": 19,
+              "observed_rows_written": 109
+            },
+            "read_context": {
+              "requests": 30,
+              "p50_ms": 4.496791999999914,
+              "p95_ms": 6.610832999999957,
+              "payload_p50_bytes": 335396,
+              "payload_p95_bytes": 335396,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 3150,
+              "rows_read_p50": 105,
+              "rows_read_p95": 105,
+              "observed_rows_written": 0
+            },
+            "read_space": {
+              "requests": 30,
+              "p50_ms": 5.599083999999948,
+              "p95_ms": 6.863333999999895,
+              "payload_p50_bytes": 93304,
+              "payload_p95_bytes": 93304,
+              "statements": 300,
+              "statements_p50": 10,
+              "statements_p95": 10,
+              "round_trips": 300,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 8460,
+              "rows_read_p50": 282,
+              "rows_read_p95": 282,
+              "observed_rows_written": 0
+            },
+            "report_progress": {
+              "requests": 24,
+              "p50_ms": 4.359083000000055,
+              "p95_ms": 5.374332999999979,
+              "payload_p50_bytes": 626,
+              "payload_p95_bytes": 626,
+              "statements": 384,
+              "statements_p50": 14,
+              "statements_p95": 18,
+              "round_trips": 348,
+              "write_statements": 48,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 648,
+              "rows_read_p50": 22,
+              "rows_read_p95": 32,
+              "observed_rows_written": 96
+            }
+          },
+          "correctness": {
+            "unique_sends": 12,
+            "unique_reports": 12,
+            "duplicate_receipts_equal": true,
+            "one_event_per_write": true
+          }
+        },
+        {
+          "concurrency": 8,
+          "peak_inflight_requests": 8,
+          "elapsed_ms": 452.21624999999995,
+          "requests_per_second": 305.1637352704597,
+          "requests": 138,
+          "p50_ms": 23.994750000000067,
+          "p95_ms": 37.24912500000005,
+          "payload_p50_bytes": 94074,
+          "payload_p95_bytes": 341114,
+          "statements": 1140,
+          "statements_p50": 10,
+          "statements_p95": 24,
+          "round_trips": 1055,
+          "write_statements": 128,
+          "agent_update_statements": 0,
+          "agent_rows_changed": 0,
+          "observed_rows_read": 17890,
+          "rows_read_p50": 105,
+          "rows_read_p95": 282,
+          "observed_rows_written": 204,
+          "operations": {
+            "read_inbox": {
+              "requests": 30,
+              "p50_ms": 22.31208300000003,
+              "p95_ms": 31.201999999999998,
+              "payload_p50_bytes": 341114,
+              "payload_p95_bytes": 341114,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 5070,
+              "rows_read_p50": 169,
+              "rows_read_p95": 169,
+              "observed_rows_written": 0
+            },
+            "read_space": {
+              "requests": 30,
+              "p50_ms": 25.09683300000006,
+              "p95_ms": 31.479458999999906,
+              "payload_p50_bytes": 94074,
+              "payload_p95_bytes": 94074,
+              "statements": 300,
+              "statements_p50": 10,
+              "statements_p95": 10,
+              "round_trips": 300,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 8460,
+              "rows_read_p50": 282,
+              "rows_read_p95": 282,
+              "observed_rows_written": 0
+            },
+            "send_instruction": {
+              "requests": 24,
+              "p50_ms": 24.427916000000096,
+              "p95_ms": 32.002666999999974,
+              "payload_p50_bytes": 230,
+              "payload_p95_bytes": 230,
+              "statements": 246,
+              "statements_p50": 10,
+              "statements_p95": 11,
+              "round_trips": 224,
+              "write_statements": 44,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 454,
+              "rows_read_p50": 19,
+              "rows_read_p95": 20,
+              "observed_rows_written": 108
+            },
+            "read_context": {
+              "requests": 30,
+              "p50_ms": 22.498499999999922,
+              "p95_ms": 28.51670799999988,
+              "payload_p50_bytes": 335396,
+              "payload_p95_bytes": 335396,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 3150,
+              "rows_read_p50": 105,
+              "rows_read_p95": 105,
+              "observed_rows_written": 0
+            },
+            "report_progress": {
+              "requests": 24,
+              "p50_ms": 26.812708999999813,
+              "p95_ms": 44.280958000000055,
+              "payload_p50_bytes": 626,
+              "payload_p95_bytes": 626,
+              "statements": 474,
+              "statements_p50": 18,
+              "statements_p95": 24,
+              "round_trips": 411,
+              "write_statements": 84,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 756,
+              "rows_read_p50": 32,
+              "rows_read_p95": 34,
+              "observed_rows_written": 96
+            }
+          },
+          "correctness": {
+            "unique_sends": 12,
+            "unique_reports": 12,
+            "duplicate_receipts_equal": true,
+            "one_event_per_write": true
+          }
+        },
+        {
+          "concurrency": 24,
+          "peak_inflight_requests": 24,
+          "elapsed_ms": 462.68954099999996,
+          "requests_per_second": 298.2561475276572,
+          "requests": 138,
+          "p50_ms": 71.78495800000019,
+          "p95_ms": 123.8193339999998,
+          "payload_p50_bytes": 94122,
+          "payload_p95_bytes": 341114,
+          "statements": 1150,
+          "statements_p50": 10,
+          "statements_p95": 24,
+          "round_trips": 1062,
+          "write_statements": 132,
+          "agent_update_statements": 0,
+          "agent_rows_changed": 0,
+          "observed_rows_read": 17902,
+          "rows_read_p50": 105,
+          "rows_read_p95": 282,
+          "observed_rows_written": 204,
+          "operations": {
+            "read_inbox": {
+              "requests": 30,
+              "p50_ms": 59.37887499999988,
+              "p95_ms": 114.06704100000024,
+              "payload_p50_bytes": 341114,
+              "payload_p95_bytes": 341114,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 5070,
+              "rows_read_p50": 169,
+              "rows_read_p95": 169,
+              "observed_rows_written": 0
+            },
+            "send_instruction": {
+              "requests": 24,
+              "p50_ms": 75.36795800000004,
+              "p95_ms": 79.43708399999991,
+              "payload_p50_bytes": 230,
+              "payload_p95_bytes": 230,
+              "statements": 246,
+              "statements_p50": 10,
+              "statements_p95": 11,
+              "round_trips": 224,
+              "write_statements": 44,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 454,
+              "rows_read_p50": 19,
+              "rows_read_p95": 20,
+              "observed_rows_written": 108
+            },
+            "read_context": {
+              "requests": 30,
+              "p50_ms": 61.44170800000029,
+              "p95_ms": 128.8504579999999,
+              "payload_p50_bytes": 335396,
+              "payload_p95_bytes": 335396,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 3150,
+              "rows_read_p50": 105,
+              "rows_read_p95": 105,
+              "observed_rows_written": 0
+            },
+            "read_space": {
+              "requests": 30,
+              "p50_ms": 73.79729199999974,
+              "p95_ms": 121.73741699999982,
+              "payload_p50_bytes": 94122,
+              "payload_p95_bytes": 94122,
+              "statements": 300,
+              "statements_p50": 10,
+              "statements_p95": 10,
+              "round_trips": 300,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 8460,
+              "rows_read_p50": 282,
+              "rows_read_p95": 282,
+              "observed_rows_written": 0
+            },
+            "report_progress": {
+              "requests": 24,
+              "p50_ms": 95.42545900000005,
+              "p95_ms": 135.30837500000007,
+              "payload_p50_bytes": 626,
+              "payload_p95_bytes": 626,
+              "statements": 484,
+              "statements_p50": 18,
+              "statements_p95": 24,
+              "round_trips": 418,
+              "write_statements": 88,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 768,
+              "rows_read_p50": 32,
+              "rows_read_p95": 34,
+              "observed_rows_written": 96
+            }
+          },
+          "correctness": {
+            "unique_sends": 12,
+            "unique_reports": 12,
+            "duplicate_receipts_equal": true,
+            "one_event_per_write": true
+          }
+        }
+      ],
+      "correctness": {
+        "pagination": "Complete unique cursor walks match seeded actionable inbox, accepted context, and sources",
+        "mcp_text_matches_structured_content": true
+      },
+      "limitations": [
+        "Local timings include asynchronous Miniflare dispatchFetch bridge and response serialization. They do not establish production capacity.",
+        "No production traffic, identities, tokens, deployment, or remote bindings. Worker external fetches are rejected.",
+        "Successful runs dispose local runtimes and remove scratch storage. Emergency workload/disposal deadlines terminate the process and may leave synthetic scratch storage; its path is printed.",
+        "Auth is replaced by an explicit synthetic-only role selector in this isolated harness. Production auth, edge network, cold starts, billing, remote D1 quotas, and geographic replication are unmeasured.",
+        "Query counts are exact application statement executions. round_trips count binding calls and batch submissions, not production network hops.",
+        "To expose actual D1 metadata, the instrumentation executes first() SQL with all() and projects the first row. This preserves the tested Workspace calls but includes all() result materialization in timings.",
+        "Payload bytes count the complete JSON-RPC response body; MCP text plus structuredContent duplicate record data.",
+        "Runs use one local D1 database; later scenarios include completed synthetic writes from earlier scenarios.",
+        "Latency starts after admission by the local concurrency limiter, excludes time waiting in its queue, and includes the full response body read. Percentiles use nearest rank; ten-request contact p95 is its maximum and includes its first request."
+      ]
+    },
+    {
+      "created_at": "2026-10-06T06:04:02.137Z",
+      "source_mode": "working tree",
+      "source_hashes": {
+        "lib/workspace.ts": "c91ec7ddcd391f9089ec7255351428ea8e1ab942eed7106e5e15f7c29f1060ea",
+        "lib/mcp-http.ts": "317da19fb83f8d71a7668250bbe6b97ed4086199b2e9e4289378643823ff4da6",
+        "lib/host.ts": "462016ea02b967d789c3293840d0bf294db8a603d7f9a8df918b15a9f4737ee3"
+      },
+      "environment": {
+        "node": "v24.10.0",
+        "miniflare": "4.20260515.0",
+        "backend": "Miniflare workerd with local D1",
+        "binding": "fresh synthetic-only DB",
+        "external_worker_fetch": "disabled",
+        "migrations": 15
+      },
+      "configuration": {
+        "rows": 1000,
+        "reads": 90,
+        "writes": 12,
+        "concurrency": [
+          1,
+          8,
+          24
+        ],
+        "revision": null,
+        "contactOnly": false
+      },
+      "fixture": {
+        "rows_per_collection": 1000,
+        "members": 1002,
+        "agents": 1002,
+        "sources": 1000,
+        "tasks": 1000,
+        "changes": 1000,
+        "grants": 1001,
+        "accepted_context": 500,
+        "actionable_inbox": 500,
+        "source_content_characters": 19924,
+        "task_body_characters": 8000,
+        "adopted_context_characters": 5000
+      },
+      "room_before_source_fix": {
+        "source_hashes": {
+          "lib/workspace.ts": "17af31f6c62c1023ddae28288319ed055bb5f703c0ba90912cab61d19d36ad64",
+          "lib/mcp-http.ts": "317da19fb83f8d71a7668250bbe6b97ed4086199b2e9e4289378643823ff4da6",
+          "lib/host.ts": "462016ea02b967d789c3293840d0bf294db8a603d7f9a8df918b15a9f4737ee3"
+        },
+        "statements": 10
+      },
+      "contact_probe": {
+        "description": "10 sequential real MCP read_context calls, limit=1, synthetic contact initially pending with last_seen_at null",
+        "requests": 10,
+        "p50_ms": 1.8823339999999007,
+        "p95_ms": 2.700166000000081,
+        "payload_p50_bytes": 17830,
+        "payload_p95_bytes": 17830,
+        "statements": 21,
+        "statements_p50": 2,
+        "statements_p95": 3,
+        "round_trips": 21,
+        "write_statements": 1,
+        "agent_update_statements": 1,
+        "agent_rows_changed": 1,
+        "observed_rows_read": 102,
+        "rows_read_p50": 10,
+        "rows_read_p95": 12,
+        "observed_rows_written": 1
+      },
+      "room_query_probe": {
+        "statements": 10,
+        "round_trips": 10,
+        "write_statements": 0,
+        "agent_update_statements": 0,
+        "agent_rows_changed": 0,
+        "rows_written": 0,
+        "rows_read": 282,
+        "meta_results": 10,
+        "trace": [
+          {
+            "sql": "SELECT * FROM agents WHERE id=? AND owner_id=?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 1,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT s.*,m.role,m.membership_key FROM spaces s JOIN members m ON m.space_id=s.id JOIN space_agents sa ON sa.space_id=s.id AND sa.agent_id=? JOIN agents a ON a.id=sa.agent_id AND a.owner_id=m.user_id AND a.status<>'revoked' WHERE s.id=? AND m.user_id=?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 5,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT m.user_id AS id,m.user_id,m.role,p.name,p.email FROM members m LEFT JOIN people p ON p.id=m.user_id WHERE m.space_id=? ORDER BY m.user_id LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 42,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT a.id,a.name,a.provider,a.status,a.owner_id,a.last_seen_at,a.contact_version,p.name AS owner_name FROM space_agents sa JOIN agents a ON a.id=sa.agent_id LEFT JOIN people p ON p.id=a.owner_id WHERE sa.space_id=? ORDER BY sa.agent_id LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 63,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT g.id,g.space_id,g.from_agent,g.to_agent,g.scope,g.allow_assign,g.allow_context,g.status,g.expires_at,g.created_at FROM grants g WHERE g.space_id=? ORDER BY g.created_at DESC,g.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT src.id,src.space_id,CASE WHEN src.status='active' THEN src.title ELSE 'Withdrawn source' END AS title,CASE WHEN src.status='active' THEN src.kind ELSE 'Unavailable' END AS kind,src.status,src.version,src.created_at,src.updated_at FROM sources src WHERE src.space_id=? ORDER BY src.created_at DESC,src.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT t.id,t.space_id,t.grant_id,t.from_agent,t.to_agent,t.title,t.status,t.version,t.channel,t.created_at,t.updated_at FROM tasks t WHERE t.space_id=? ORDER BY t.created_at DESC,t.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT c.id,c.space_id,c.grant_id,c.from_agent,c.to_agent,c.title,c.scope,c.status,c.version,c.source_id,c.created_at,c.updated_at,CASE WHEN c.source_id IS NULL THEN NULL WHEN src.id IS NULL THEN 'missing' ELSE src.status END AS source_status,src.version AS source_version FROM changes c LEFT JOIN sources src ON src.id=c.source_id AND src.space_id=c.space_id WHERE c.space_id=? ORDER BY c.created_at DESC,c.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 1,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 21,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT e.id,e.space_id,e.kind,e.description,e.created_at,p.name AS actor_name FROM events e LEFT JOIN people p ON p.id=e.actor_id WHERE e.space_id=? ORDER BY e.created_at DESC,e.id DESC LIMIT ?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 42,
+              "rows_written": 0
+            }
+          },
+          {
+            "sql": "SELECT s.membership_version,s.context_revision,m.membership_key,src.id, CASE WHEN src.status='active' THEN src.title ELSE 'Withdrawn source' END AS title, CASE WHEN src.status='active' THEN src.kind ELSE 'Unavailable' END AS kind, src.status,src.version,src.updated_at FROM spaces s JOIN members m ON m.space_id=s.id JOIN space_agents sa ON sa.space_id=s.id AND sa.agent_id=? JOIN agents a ON a.id=sa.agent_id AND a.owner_id=m.user_id AND a.status<>'revoked' LEFT JOIN json_each(?) requested ON TRUE LEFT JOIN sources src ON src.id=requested.value AND src.space_id=s.id WHERE s.id=? AND m.user_id=?",
+            "meta": {
+              "served_by": "miniflare.db",
+              "duration": 0,
+              "changes": 0,
+              "last_row_id": 1006,
+              "changed_db": false,
+              "size_after": 53649408,
+              "rows_read": 45,
+              "rows_written": 0
+            }
+          }
+        ],
+        "final_source_lookup_plan": [
+          {
+            "id": 11,
+            "parent": 0,
+            "notused": 46,
+            "detail": "SEARCH s USING INDEX sqlite_autoindex_spaces_1 (id=?)"
+          },
+          {
+            "id": 18,
+            "parent": 0,
+            "notused": 47,
+            "detail": "SEARCH m USING INDEX sqlite_autoindex_members_1 (space_id=? AND user_id=?)"
+          },
+          {
+            "id": 27,
+            "parent": 0,
+            "notused": 45,
+            "detail": "SEARCH sa USING COVERING INDEX sqlite_autoindex_space_agents_1 (space_id=? AND agent_id=?)"
+          },
+          {
+            "id": 35,
+            "parent": 0,
+            "notused": 61,
+            "detail": "SEARCH a USING INDEX agents_owner (owner_id=? AND id=?)"
+          },
+          {
+            "id": 45,
+            "parent": 0,
+            "notused": 0,
+            "detail": "SCAN requested VIRTUAL TABLE INDEX 1: LEFT-JOIN"
+          },
+          {
+            "id": 54,
+            "parent": 0,
+            "notused": 46,
+            "detail": "SEARCH src USING INDEX sqlite_autoindex_sources_1 (id=?) LEFT-JOIN"
+          }
+        ]
+      },
+      "scenarios": [
+        {
+          "concurrency": 1,
+          "peak_inflight_requests": 1,
+          "elapsed_ms": 784.5193750000001,
+          "requests_per_second": 175.90387745363202,
+          "requests": 138,
+          "p50_ms": 4.356375000000071,
+          "p95_ms": 6.710040999999819,
+          "payload_p50_bytes": 93306,
+          "payload_p95_bytes": 341114,
+          "statements": 1021,
+          "statements_p50": 8,
+          "statements_p95": 18,
+          "round_trips": 973,
+          "write_statements": 73,
+          "agent_update_statements": 1,
+          "agent_rows_changed": 1,
+          "observed_rows_read": 17714,
+          "rows_read_p50": 105,
+          "rows_read_p95": 282,
+          "observed_rows_written": 205,
+          "operations": {
+            "read_inbox": {
+              "requests": 30,
+              "p50_ms": 3.6268749999999272,
+              "p95_ms": 6.239291999999978,
+              "payload_p50_bytes": 341114,
+              "payload_p95_bytes": 341114,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 5070,
+              "rows_read_p50": 169,
+              "rows_read_p95": 169,
+              "observed_rows_written": 0
+            },
+            "send_instruction": {
+              "requests": 24,
+              "p50_ms": 3.4235419999999976,
+              "p95_ms": 7.000583000000006,
+              "payload_p50_bytes": 230,
+              "payload_p95_bytes": 230,
+              "statements": 217,
+              "statements_p50": 8,
+              "statements_p95": 10,
+              "round_trips": 205,
+              "write_statements": 25,
+              "agent_update_statements": 1,
+              "agent_rows_changed": 1,
+              "observed_rows_read": 386,
+              "rows_read_p50": 13,
+              "rows_read_p95": 19,
+              "observed_rows_written": 109
+            },
+            "read_context": {
+              "requests": 30,
+              "p50_ms": 4.399124999999913,
+              "p95_ms": 5.156833000000006,
+              "payload_p50_bytes": 335396,
+              "payload_p95_bytes": 335396,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 3150,
+              "rows_read_p50": 105,
+              "rows_read_p95": 105,
+              "observed_rows_written": 0
+            },
+            "read_space": {
+              "requests": 30,
+              "p50_ms": 5.691749999999956,
+              "p95_ms": 6.422874999999976,
+              "payload_p50_bytes": 93306,
+              "payload_p95_bytes": 93306,
+              "statements": 300,
+              "statements_p50": 10,
+              "statements_p95": 10,
+              "round_trips": 300,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 8460,
+              "rows_read_p50": 282,
+              "rows_read_p95": 282,
+              "observed_rows_written": 0
+            },
+            "report_progress": {
+              "requests": 24,
+              "p50_ms": 4.361208000000261,
+              "p95_ms": 6.710040999999819,
+              "payload_p50_bytes": 626,
+              "payload_p95_bytes": 626,
+              "statements": 384,
+              "statements_p50": 14,
+              "statements_p95": 18,
+              "round_trips": 348,
+              "write_statements": 48,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 648,
+              "rows_read_p50": 22,
+              "rows_read_p95": 32,
+              "observed_rows_written": 96
+            }
+          },
+          "correctness": {
+            "unique_sends": 12,
+            "unique_reports": 12,
+            "duplicate_receipts_equal": true,
+            "one_event_per_write": true
+          }
+        },
+        {
+          "concurrency": 8,
+          "peak_inflight_requests": 8,
+          "elapsed_ms": 474.34912499999973,
+          "requests_per_second": 290.924959543248,
+          "requests": 138,
+          "p50_ms": 24.40816599999971,
+          "p95_ms": 42.92650000000003,
+          "payload_p50_bytes": 94076,
+          "payload_p95_bytes": 341114,
+          "statements": 1124,
+          "statements_p50": 10,
+          "statements_p95": 24,
+          "round_trips": 1044,
+          "write_statements": 120,
+          "agent_update_statements": 0,
+          "agent_rows_changed": 0,
+          "observed_rows_read": 17864,
+          "rows_read_p50": 105,
+          "rows_read_p95": 282,
+          "observed_rows_written": 204,
+          "operations": {
+            "read_inbox": {
+              "requests": 30,
+              "p50_ms": 21.52270800000042,
+              "p95_ms": 29.7048749999999,
+              "payload_p50_bytes": 341114,
+              "payload_p95_bytes": 341114,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 5070,
+              "rows_read_p50": 169,
+              "rows_read_p95": 169,
+              "observed_rows_written": 0
+            },
+            "read_context": {
+              "requests": 30,
+              "p50_ms": 22.090375000000222,
+              "p95_ms": 29.158042000000023,
+              "payload_p50_bytes": 335396,
+              "payload_p95_bytes": 335396,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 3150,
+              "rows_read_p50": 105,
+              "rows_read_p95": 105,
+              "observed_rows_written": 0
+            },
+            "read_space": {
+              "requests": 30,
+              "p50_ms": 25.980833000000075,
+              "p95_ms": 35.68733299999985,
+              "payload_p50_bytes": 94076,
+              "payload_p95_bytes": 94076,
+              "statements": 300,
+              "statements_p50": 10,
+              "statements_p95": 10,
+              "round_trips": 300,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 8460,
+              "rows_read_p50": 282,
+              "rows_read_p95": 282,
+              "observed_rows_written": 0
+            },
+            "send_instruction": {
+              "requests": 24,
+              "p50_ms": 26.078708000000006,
+              "p95_ms": 35.614040999999816,
+              "payload_p50_bytes": 230,
+              "payload_p95_bytes": 230,
+              "statements": 240,
+              "statements_p50": 10,
+              "statements_p95": 11,
+              "round_trips": 220,
+              "write_statements": 40,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 440,
+              "rows_read_p50": 19,
+              "rows_read_p95": 20,
+              "observed_rows_written": 108
+            },
+            "report_progress": {
+              "requests": 24,
+              "p50_ms": 28.90604200000007,
+              "p95_ms": 53.81079200000022,
+              "payload_p50_bytes": 626,
+              "payload_p95_bytes": 626,
+              "statements": 464,
+              "statements_p50": 18,
+              "statements_p95": 24,
+              "round_trips": 404,
+              "write_statements": 80,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 744,
+              "rows_read_p50": 32,
+              "rows_read_p95": 34,
+              "observed_rows_written": 96
+            }
+          },
+          "correctness": {
+            "unique_sends": 12,
+            "unique_reports": 12,
+            "duplicate_receipts_equal": true,
+            "one_event_per_write": true
+          }
+        },
+        {
+          "concurrency": 24,
+          "peak_inflight_requests": 24,
+          "elapsed_ms": 463.7210420000001,
+          "requests_per_second": 297.5927066082974,
+          "requests": 138,
+          "p50_ms": 71.74554099999978,
+          "p95_ms": 119.93499999999995,
+          "payload_p50_bytes": 94124,
+          "payload_p95_bytes": 341114,
+          "statements": 1166,
+          "statements_p50": 10,
+          "statements_p95": 24,
+          "round_trips": 1073,
+          "write_statements": 140,
+          "agent_update_statements": 0,
+          "agent_rows_changed": 0,
+          "observed_rows_read": 17928,
+          "rows_read_p50": 105,
+          "rows_read_p95": 282,
+          "observed_rows_written": 204,
+          "operations": {
+            "read_inbox": {
+              "requests": 30,
+              "p50_ms": 65.86958300000015,
+              "p95_ms": 100.33362500000021,
+              "payload_p50_bytes": 341114,
+              "payload_p95_bytes": 341114,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 5070,
+              "rows_read_p50": 169,
+              "rows_read_p95": 169,
+              "observed_rows_written": 0
+            },
+            "read_context": {
+              "requests": 30,
+              "p50_ms": 67.4100840000001,
+              "p95_ms": 102.63966699999992,
+              "payload_p50_bytes": 335396,
+              "payload_p95_bytes": 335396,
+              "statements": 60,
+              "statements_p50": 2,
+              "statements_p95": 2,
+              "round_trips": 60,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 3150,
+              "rows_read_p50": 105,
+              "rows_read_p95": 105,
+              "observed_rows_written": 0
+            },
+            "read_space": {
+              "requests": 30,
+              "p50_ms": 82.41145799999958,
+              "p95_ms": 118.85733299999993,
+              "payload_p50_bytes": 94124,
+              "payload_p95_bytes": 94124,
+              "statements": 300,
+              "statements_p50": 10,
+              "statements_p95": 10,
+              "round_trips": 300,
+              "write_statements": 0,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 8460,
+              "rows_read_p50": 282,
+              "rows_read_p95": 282,
+              "observed_rows_written": 0
+            },
+            "send_instruction": {
+              "requests": 24,
+              "p50_ms": 71.51516600000014,
+              "p95_ms": 79.58429100000012,
+              "payload_p50_bytes": 230,
+              "payload_p95_bytes": 230,
+              "statements": 252,
+              "statements_p50": 10,
+              "statements_p95": 11,
+              "round_trips": 228,
+              "write_statements": 48,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 468,
+              "rows_read_p50": 19,
+              "rows_read_p95": 20,
+              "observed_rows_written": 108
+            },
+            "report_progress": {
+              "requests": 24,
+              "p50_ms": 94.92270800000006,
+              "p95_ms": 133.7190410000003,
+              "payload_p50_bytes": 626,
+              "payload_p95_bytes": 626,
+              "statements": 494,
+              "statements_p50": 18,
+              "statements_p95": 24,
+              "round_trips": 425,
+              "write_statements": 92,
+              "agent_update_statements": 0,
+              "agent_rows_changed": 0,
+              "observed_rows_read": 780,
+              "rows_read_p50": 32,
+              "rows_read_p95": 34,
+              "observed_rows_written": 96
+            }
+          },
+          "correctness": {
+            "unique_sends": 12,
+            "unique_reports": 12,
+            "duplicate_receipts_equal": true,
+            "one_event_per_write": true
+          }
+        }
+      ],
+      "correctness": {
+        "pagination": "Complete unique cursor walks match seeded actionable inbox, accepted context, and sources",
+        "mcp_text_matches_structured_content": true
+      },
+      "limitations": [
+        "Local timings include asynchronous Miniflare dispatchFetch bridge and response serialization. They do not establish production capacity.",
+        "No production traffic, identities, tokens, deployment, or remote bindings. Worker external fetches are rejected.",
+        "Successful runs dispose local runtimes and remove scratch storage. Emergency workload/disposal deadlines terminate the process and may leave synthetic scratch storage; its path is printed.",
+        "Auth is replaced by an explicit synthetic-only role selector in this isolated harness. Production auth, edge network, cold starts, billing, remote D1 quotas, and geographic replication are unmeasured.",
+        "Query counts are exact application statement executions. round_trips count binding calls and batch submissions, not production network hops.",
+        "To expose actual D1 metadata, the instrumentation executes first() SQL with all() and projects the first row. This preserves the tested Workspace calls but includes all() result materialization in timings.",
+        "Payload bytes count the complete JSON-RPC response body; MCP text plus structuredContent duplicate record data.",
+        "Runs use one local D1 database; later scenarios include completed synthetic writes from earlier scenarios.",
+        "Latency starts after admission by the local concurrency limiter, excludes time waiting in its queue, and includes the full response body read. Percentiles use nearest rank; ten-request contact p95 is its maximum and includes its first request."
+      ]
+    }
+  ],
+  "harness_sha256": {
+    "scripts/measure-agent-load.mjs": "ea6b32e6e2a7c45e111a1a66aed48ae1dc91a2e1894f464b1e8258ae10697f67",
+    "tests/helpers/agent-load.mjs": "d871df7b55f24df161823473447931769e84138550a28fbdf5b0cd2d37d791e8"
+  }
+}

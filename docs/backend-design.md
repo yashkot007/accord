@@ -58,6 +58,16 @@ Retain MCP as the first transport. Future provider and A2A adapters must preserv
 
 For a classroom or other group, a single human intention creates a separate exchange for each eligible recipient. Each exchange has its own permission check, context boundary, progress, and failure handling. A group view aggregates outcomes without exposing one recipient's private context to the others.
 
+## Contact and bounded source validation, implemented October 5, 2026
+
+Every profile-specific agent call reads current ownership before recording contact; resource membership, attachment, grant and version checks remain separate. Ordinary calls coalesce contact writes into thirty-second intervals. A conditional database update handles concurrent first contacts without moving `last_seen_at` backward. Explicit `connect_agent` always records contact and returns the profile's monotonic `contact_version` and timestamp. Human reads and routing never manufacture contact. Migration `0014_agent_contact.sql` adds the counter with zero as the default, preserving existing profile status and timestamps.
+
+The connection dialog captures this counter before setup and checks for an increase afterward. This distinguishes fresh contact when timestamps tie or clocks retreat. Contact proves a call authenticated as the profile's owner; it does not attest a vendor, prove a room read, or start external execution.
+
+Final shared-source validation drives primary-key lookups from the bounded, deduplicated source-ID list. Source state, current membership/profile attachment and export revision still share one final database read. Missing and foreign-room sources remain excluded; withdrawn titles remain redacted. The lookup no longer scans every source in the room.
+
+The isolated Worker/D1 [measurement record](verification/agent-load-oct5.json) reports one contact write for ten sequential reads, versus ten in the previous revision. The compact room probe reads 282 D1 rows at both 250 and 1,000 seeded sources after the lookup change, versus 512 and 1,262 before it. These are synthetic local database-work measurements. They do not establish production capacity, native provider compatibility, admission/rate protection, or operational recovery.
+
 ## Implementation sequence
 
 1. Extract shared policy checks and typed commands while preserving current behavior and transaction guarantees.
