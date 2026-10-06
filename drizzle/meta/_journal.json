@@ -92,6 +92,13 @@
       "when": 1791262231976,
       "tag": "0012_room_read_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1791263612520,
+      "tag": "0013_human_room_reads",
+      "breakpoints": true
     }
   ]
 }

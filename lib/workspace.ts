@@ -136,14 +136,15 @@ export class Workspace {
     const member=await this.one(`SELECT s.*,m.role,m.membership_key FROM spaces s JOIN members m ON m.space_id=s.id JOIN space_agents sa ON sa.space_id=s.id AND sa.agent_id=? JOIN agents a ON a.id=sa.agent_id AND a.owner_id=m.user_id AND a.status<>'revoked' WHERE s.id=? AND m.user_id=?`,agentId,space,this.user.id);
     if(!member)throw new AppError('This room is not available to this assistant.',403);return member;
   }
-  private async finishRoomRead(space:string,member:Row,agentId?:string,sources:Row[]=[]) {
+  private async finishRoomRead(space:string,member:Row,agentId?:string,sources:Row[]=[],contextRevision?:number) {
     if(!sources.length){
       const current=agentId?await this.agentRoom(space,agentId):await this.member(space);
       if(current.membership_key!==member.membership_key||current.membership_version!==member.membership_version)throw new AppError('Membership changed while loading. Read this room again.',409);
+      if(contextRevision!==undefined&&current.context_revision!==contextRevision)throw new AppError('Guidance changed while preparing this export. Try again.',409);
       return [] as Row[];
     }
     // Source state and current membership/profile attachment share the final database read.
-    const rows=await this.all(`SELECT s.membership_version,m.membership_key,src.id,
+    const rows=await this.all(`SELECT s.membership_version,s.context_revision,m.membership_key,src.id,
       CASE WHEN src.status='active' THEN src.title ELSE 'Withdrawn source' END AS title,
       CASE WHEN src.status='active' THEN src.kind ELSE 'Unavailable' END AS kind,
       src.status,src.version,src.updated_at FROM spaces s JOIN members m ON m.space_id=s.id
@@ -152,11 +153,14 @@ export class Workspace {
       WHERE s.id=? AND m.user_id=?`,...(agentId?[agentId]:[]),JSON.stringify(sources.map(source=>source.id)),space,this.user.id);
     if(!rows.length)throw new AppError('This room is not available to this assistant.',403);
     if(rows[0].membership_key!==member.membership_key||rows[0].membership_version!==member.membership_version)throw new AppError('Membership changed while loading. Read this room again.',409);
-    return rows.filter(row=>row.id).map(({membership_key,membership_version,...source})=>source);
+    if(contextRevision!==undefined&&rows[0].context_revision!==contextRevision)throw new AppError('Guidance changed while preparing this export. Try again.',409);
+    return rows.filter(row=>row.id).map(({membership_key,membership_version,context_revision,...source})=>source);
   }
-  private async roomCollection(space:string,section:string,a:Args,member:Row,agentId?:string) {
-    const page=pageRequest({...a,limit:a.limit??20},JSON.stringify(['room',this.user.id,agentId??'human',space,member.membership_key,member.membership_version,section]));
-    const definitions:Record<string,{select:string;key:string;time?:string}>= {
+  private async roomCollection(space:string,section:string,a:Args,member:Row,agentId?:string,projection:'summary'|'human'|'export'='summary') {
+    const filter=projection==='human'&&section==='changes'?field(a,'status',20,true):projection==='export'?'accepted':'';
+    if(filter&&!['pending','accepted','declined'].includes(filter))throw new AppError('Choose an available guidance status.');
+    const page=pageRequest({...a,limit:a.limit??20},JSON.stringify(['room',this.user.id,agentId??'human',space,member.membership_key,member.membership_version,section,...(projection==='summary'?[]:[projection,filter,...(projection==='export'?[member.context_revision]:[])])]));
+    const definitions:Record<string,{select:string;key:string;time?:string;bindings?:any[]}>= {
       people:{select:'SELECT m.user_id AS id,m.user_id,m.role,p.name,p.email FROM members m LEFT JOIN people p ON p.id=m.user_id WHERE m.space_id=?',key:'m.user_id'},
       agents:{select:'SELECT a.id,a.name,a.provider,a.status,a.owner_id,a.last_seen_at,p.name AS owner_name FROM space_agents sa JOIN agents a ON a.id=sa.agent_id LEFT JOIN people p ON p.id=a.owner_id WHERE sa.space_id=?',key:'sa.agent_id'},
       grants:{select:'SELECT g.id,g.space_id,g.from_agent,g.to_agent,g.scope,g.allow_assign,g.allow_context,g.status,g.expires_at,g.created_at FROM grants g WHERE g.space_id=?',key:'g.id',time:'g.created_at'},
@@ -165,10 +169,17 @@ export class Workspace {
       changes:{select:`SELECT c.id,c.space_id,c.grant_id,c.from_agent,c.to_agent,c.title,c.scope,c.status,c.version,c.source_id,c.created_at,c.updated_at,${sourceProvenance} FROM changes c LEFT JOIN sources src ON src.id=c.source_id AND src.space_id=c.space_id WHERE c.space_id=?`,key:'c.id',time:'c.created_at'},
       events:{select:'SELECT e.id,e.space_id,e.kind,e.description,e.created_at,p.name AS actor_name FROM events e LEFT JOIN people p ON p.id=e.actor_id WHERE e.space_id=?',key:'e.id',time:'e.created_at'},
     };
-    const definition=definitions[section];if(!definition)throw new AppError('Choose an available room section.');
+    if(projection!=='summary'){
+      const names='sender.name AS from_name,recipient.name AS to_name';
+      definitions.tasks={select:`SELECT t.id,t.space_id,t.grant_id,t.from_agent,t.to_agent,t.title,t.status,t.version,t.channel,t.created_at,t.updated_at,${names},recipient.owner_id=? AS recipient_owned,CASE WHEN g.allow_assign=1 AND ${liveGrant} THEN 1 ELSE 0 END AS authority_active,substr(CASE WHEN t.feedback<>'' THEN t.feedback ELSE t.body END,1,300) AS preview FROM tasks t LEFT JOIN agents sender ON sender.id=t.from_agent LEFT JOIN agents recipient ON recipient.id=t.to_agent LEFT JOIN grants g ON g.id=t.grant_id WHERE t.space_id=?`,bindings:[this.user.id,now()],key:'t.id',time:'t.created_at'};
+      definitions.changes={select:`SELECT c.id,c.space_id,c.grant_id,c.from_agent,c.to_agent,c.title,c.scope,c.status,c.version,c.source_id,c.created_at,c.updated_at,${sourceProvenance},CASE WHEN src.status='active' THEN src.title WHEN c.source_id IS NOT NULL THEN 'Source withdrawn' ELSE 'Direct proposal' END AS source_title,${names},recipient.owner_id=? AS recipient_owned,CASE WHEN g.allow_context=1 AND ${liveGrant} THEN 1 ELSE 0 END AS authority_active,${projection==='export'?'c.previous,c.instruction,c.adopted,c.reason':'substr(COALESCE(c.adopted,c.instruction),1,300) AS preview'} FROM changes c LEFT JOIN agents sender ON sender.id=c.from_agent LEFT JOIN agents recipient ON recipient.id=c.to_agent LEFT JOIN sources src ON src.id=c.source_id AND src.space_id=c.space_id LEFT JOIN grants g ON g.id=c.grant_id WHERE c.space_id=?${filter?' AND c.status=?':''}`,bindings:[this.user.id,now()],key:'c.id',time:'c.created_at'};
+      definitions.grants={select:`SELECT g.id,g.space_id,g.from_agent,g.to_agent,g.scope,g.allow_assign,g.allow_context,g.status,g.expires_at,g.created_at,${names},recipient.owner_id=? AS recipient_owned,CASE WHEN ${liveGrant} THEN 1 ELSE 0 END AS authority_active FROM grants g LEFT JOIN agents sender ON sender.id=g.from_agent LEFT JOIN agents recipient ON recipient.id=g.to_agent WHERE g.space_id=?`,bindings:[this.user.id,now()],key:'g.id',time:'g.created_at'};
+    }
+    if(!Object.hasOwn(definitions,section))throw new AppError('Choose an available room section.');
+    const definition=definitions[section];
     const {key,time}=definition,after=page.after;
     const predicate=after?(time?` AND (${time}<? OR (${time}=? AND ${key}<?))`:` AND ${key}>?`):'';
-    const rows=await this.all(`${definition.select}${predicate} ORDER BY ${time?`${time} DESC,${key} DESC`:key} LIMIT ?`,space,...(after?(time?[after.at,after.at,after.id]:[after.id]):[]),page.limit+1);
+    const rows=await this.all(`${definition.select}${predicate} ORDER BY ${time?`${time} DESC,${key} DESC`:key} LIMIT ?`,...(definition.bindings||[]),space,...(section==='changes'&&filter?[filter]:[]),...(after?(time?[after.at,after.at,after.id]:[after.id]):[]),page.limit+1);
     // ID-only membership/attachment pages reuse the cursor envelope without inventing a record timestamp.
     const result=pageResult(time?rows:rows.map(row=>({...row,cursor_at:member.created_at})),page,time?'created_at':'cursor_at');
     const items=time?result.items:result.items.map(({cursor_at,...row})=>row);
@@ -180,6 +191,95 @@ export class Workspace {
     const states=await this.finishRoomRead(space,member,agentId,section==='sources'?result.items:[]);
     if(section==='sources')result.items=result.items.map(source=>({...source,...(states.find(state=>state.id===source.id)??{title:'Withdrawn source',kind:'Unavailable',status:'missing',version:null})}));
     return result;
+  }
+  async humanCatalog(section:string,a:Args={}) {
+    const active=section==='agents'?field(a,'active',10,true):'';
+    if(active&&!['yes','no'].includes(active))throw new AppError('Choose an available assistant filter.');
+    const page=pageRequest({...a,limit:a.limit??20},JSON.stringify(['human-catalog',this.user.id,section,active]));
+    let rows:Row[];
+    if(section==='spaces')rows=await this.all(`SELECT s.id,s.name,s.purpose,s.topic,s.owner_id,s.created_at,s.membership_version,m.membership_key,m.role,(SELECT count(*) FROM space_agents sa WHERE sa.space_id=s.id) AS agent_count FROM members m JOIN spaces s ON s.id=m.space_id WHERE m.user_id=?${page.after?' AND m.space_id>?':''} ORDER BY m.space_id LIMIT ?`,this.user.id,...(page.after?[page.after.id]:[]),page.limit+1);
+    else if(section==='agents')rows=await this.all(`SELECT id,owner_id,name,provider,status,last_seen_at,created_at FROM agents WHERE owner_id=?${active?active==='yes'?" AND status<>'revoked'":" AND status='revoked'":''}${page.after?' AND id>?':''} ORDER BY id LIMIT ?`,this.user.id,...(page.after?[page.after.id]:[]),page.limit+1);
+    else if(section==='events')rows=safeEvents(await this.all(`SELECT e.id,e.space_id,e.kind,e.description,e.created_at,s.name AS space_name,s.membership_version,m.membership_key,p.name AS actor_name FROM events e JOIN members m ON m.space_id=e.space_id JOIN spaces s ON s.id=e.space_id LEFT JOIN people p ON p.id=e.actor_id WHERE m.user_id=?${page.after?' AND (e.created_at<? OR (e.created_at=? AND e.id<?))':''} ORDER BY e.created_at DESC,e.id DESC LIMIT ?`,this.user.id,...(page.after?[page.after.at,page.after.at,page.after.id]:[]),page.limit+1));
+    else throw new AppError('Choose an available workspace collection.');
+    const result=pageResult(rows,page);
+    if(section!=='agents'&&result.items.length){
+      const spaces=Array.from(new Set(result.items.map(row=>section==='spaces'?row.id:row.space_id)));
+      const current=await this.all('SELECT s.id,s.membership_version,m.membership_key FROM members m JOIN spaces s ON s.id=m.space_id WHERE m.user_id=? AND s.id IN (SELECT value FROM json_each(?))',this.user.id,JSON.stringify(spaces));
+      for(const row of result.items){const access=current.find(s=>s.id===(section==='spaces'?row.id:row.space_id));if(!access)throw new AppError('Your workspace access changed. Refresh before continuing.',403);if(access.membership_key!==row.membership_key||access.membership_version!==row.membership_version)throw new AppError('Your workspace access changed. Refresh before continuing.',409);}
+    }
+    return {section,...result,complete:result.next_cursor===null};
+  }
+  async humanBootstrap() {
+    await this.stmt('INSERT INTO people (id,email,name) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,name=excluded.name',this.user.id,this.user.email,this.user.name).run();
+    const [spaces,agents,events,home,counts]=await Promise.all([
+      this.humanCatalog('spaces'),this.humanCatalog('agents',{active:'yes'}),this.humanCatalog('events'),this.home(),
+      this.one("SELECT (SELECT count(*) FROM members WHERE user_id=?) AS spaces,(SELECT count(*) FROM agents WHERE owner_id=? AND status<>'revoked') AS agents,(SELECT count(*) FROM agents WHERE owner_id=? AND status='revoked') AS revoked_agents",this.user.id,this.user.id,this.user.id),
+    ]);
+    return {user:this.user,spaces:spaces.items,agents:agents.items,events:events.items,home,counts,pages:Object.fromEntries([spaces,agents,events].map(page=>[page.section,{next_cursor:page.next_cursor,complete:page.complete}]))};
+  }
+  async humanSetup(space:string) {
+    await this.stmt('INSERT INTO people (id,email,name) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,name=excluded.name',this.user.id,this.user.email,this.user.name).run();
+    const room=await this.member(space),profiles=await this.one("SELECT EXISTS(SELECT 1 FROM agents WHERE owner_id=? AND status<>'revoked') AS available",this.user.id);
+    await this.finishRoomRead(space,room);
+    return {user:this.user,room,has_profiles:!!profiles?.available};
+  }
+  async humanRoom(space:string) {
+    const member=await this.member(space);
+    const sections=['people','agents','grants','sources','tasks','changes','events'];
+    const [pages,counts]=await Promise.all([
+      Promise.all(sections.map(section=>this.roomCollection(space,section,{},member,undefined,'human'))),
+      this.one(`SELECT (SELECT count(*) FROM members WHERE space_id=?) AS people,
+        (SELECT count(*) FROM space_agents sa JOIN agents a ON a.id=sa.agent_id JOIN members m ON m.space_id=sa.space_id AND m.user_id=a.owner_id WHERE sa.space_id=? AND a.status<>'revoked') AS active_agents,
+        (SELECT count(*) FROM space_agents sa JOIN agents a ON a.id=sa.agent_id WHERE sa.space_id=? AND a.owner_id=? AND a.status<>'revoked') AS my_agents,
+        (SELECT count(*) FROM space_agents sa JOIN agents a ON a.id=sa.agent_id WHERE sa.space_id=? AND a.owner_id=? AND a.status='connected') AS my_connected_agents,
+        (SELECT count(*) FROM changes WHERE space_id=? AND status='pending') AS pending,
+        (SELECT count(*) FROM grants g WHERE g.space_id=? AND ${liveGrant}) AS active_grants,
+        (SELECT count(*) FROM grants g JOIN agents a ON a.id=g.from_agent WHERE g.space_id=? AND a.owner_id=? AND g.allow_assign=1 AND ${liveGrant}) AS can_assign,
+        (SELECT count(*) FROM grants g JOIN agents a ON a.id=g.from_agent WHERE g.space_id=? AND a.owner_id=? AND g.allow_context=1 AND ${liveGrant}) AS can_propose`,space,space,space,this.user.id,space,this.user.id,space,space,now(),space,this.user.id,now(),space,this.user.id,now()),
+    ]);
+    const sourcePage=pages.find(page=>page.section==='sources')!,changePage=pages.find(page=>page.section==='changes')!;
+    const states=await this.finishRoomRead(space,member,undefined,[...sourcePage.items,...changePage.items.filter(change=>change.source_id).map(change=>({id:change.source_id}))]);
+    sourcePage.items=sourcePage.items.map(source=>({...source,...(states.find(state=>state.id===source.id)??{title:'Withdrawn source',kind:'Unavailable',status:'missing',version:null})}));
+    changePage.items=changePage.items.map(change=>({...change,source_status:change.source_id?(states.find(source=>source.id===change.source_id)?.status||'missing'):null,source_version:change.source_id?(states.find(source=>source.id===change.source_id)?.version??null):null,source_title:!change.source_id?'Direct proposal':states.find(source=>source.id===change.source_id)?.status==='active'?states.find(source=>source.id===change.source_id)!.title:'Source withdrawn'}));
+    return {...member,...Object.fromEntries(pages.map(page=>[page.section,page.items])),counts,summaries:true,pages:Object.fromEntries(pages.map(page=>[page.section,{next_cursor:page.next_cursor,complete:page.next_cursor===null}]))};
+  }
+  async humanRoomPage(space:string,section:string,a:Args={}) {
+    const member=await this.member(space),exporting=section==='accepted_context';
+    if(exporting&&a.revision!==undefined&&a.revision!==member.context_revision)throw new AppError('Guidance changed while preparing this export. Try again.',409);
+    const result=await this.roomCollection(space,exporting?'changes':section,a,member,undefined,exporting?'export':'human');
+    const sources=section==='sources'?result.items:(exporting||section==='changes')?result.items.filter(item=>item.source_id).map(item=>({id:item.source_id})):[];
+    const states=await this.finishRoomRead(space,member,undefined,sources,exporting?member.context_revision:undefined);
+    if(section==='sources')result.items=result.items.map(source=>({...source,...(states.find(state=>state.id===source.id)??{title:'Withdrawn source',kind:'Unavailable',status:'missing',version:null})}));
+    if(exporting||section==='changes')result.items=result.items.map(change=>({...change,source_status:change.source_id?(states.find(source=>source.id===change.source_id)?.status||'missing'):null,source_version:change.source_id?(states.find(source=>source.id===change.source_id)?.version??null):null,source_title:!change.source_id?'Direct proposal':states.find(source=>source.id===change.source_id)?.status==='active'?states.find(source=>source.id===change.source_id)!.title:'Source withdrawn'}));
+    return {...result,section,...(exporting?{revision:member.context_revision,membership_key:member.membership_key,membership_version:member.membership_version,name:member.name,purpose:member.purpose}: {})};
+  }
+  async checkHumanExport(space:string,a:Args) {
+    const member=await this.member(space);
+    if(a.revision!==member.context_revision||a.membership_key!==member.membership_key||a.membership_version!==member.membership_version)throw new AppError('Guidance or access changed while preparing this export. Try again.',409);
+    return {valid:true};
+  }
+  async humanProfile(profileId:string,space?:string) {
+    const member=space?await this.member(space):null;
+    const profile=await this.one(`SELECT a.id,a.owner_id,a.name,a.provider,a.status,a.last_seen_at,a.created_at${space?',s.membership_version,m.membership_key,EXISTS(SELECT 1 FROM space_agents sa WHERE sa.space_id=s.id AND sa.agent_id=a.id) AS attached':''} FROM agents a${space?' JOIN spaces s ON s.id=? JOIN members m ON m.space_id=s.id AND m.user_id=a.owner_id':''} WHERE a.id=? AND a.owner_id=? AND a.status<>'revoked'`,...(space?[space]:[]),profileId,this.user.id);
+    if(!profile)throw new AppError('This assistant is not available to your account.',403);
+    if(member&&(profile.membership_key!==member.membership_key||profile.membership_version!==member.membership_version))throw new AppError('Your room access changed. Refresh before continuing.',409);
+    return {user:this.user,profile,attached:!!profile.attached};
+  }
+  async humanChoices(kind:string,a:Args) {
+    if(kind==='spaces')return this.humanCatalog('spaces',a);
+    const space=field(a,'space_id',100,true),capability=field(a,'capability',20,true),owned=field(a,'owned',10,true);
+    if(capability&&!['assign','context'].includes(capability))throw new AppError('Choose an available permission.');
+    if(owned&&!['yes','no'].includes(owned))throw new AppError('Choose an available ownership filter.');
+    const member=space?await this.member(space):null;
+    const page=pageRequest({...a,limit:a.limit??20},JSON.stringify(['human-choices',this.user.id,kind,space,member?.membership_key,member?.membership_version,capability,owned]));
+    let rows:Row[];
+    if(kind==='agents')rows=await this.all(`SELECT a.id,a.name AS label,a.owner_id,a.provider,a.status,a.last_seen_at FROM agents a${space?' JOIN space_agents sa ON sa.agent_id=a.id JOIN members m ON m.space_id=sa.space_id AND m.user_id=a.owner_id':''} WHERE ${space?'sa.space_id=?':"a.owner_id=?"} AND a.status<>'revoked'${space&&owned==='yes'?' AND a.owner_id=?':''}${page.after?' AND a.id>?':''} ORDER BY a.id LIMIT ?`,space||this.user.id,...(space&&owned==='yes'?[this.user.id]:[]),...(page.after?[page.after.id]:[]),page.limit+1);
+    else if(kind==='grants'&&space&&capability)rows=await this.all(`SELECT g.id,sender.name||' → '||recipient.name AS label FROM grants g JOIN agents sender ON sender.id=g.from_agent JOIN agents recipient ON recipient.id=g.to_agent WHERE g.space_id=? AND sender.owner_id=? AND g.allow_${capability}=1 AND ${liveGrant}${page.after?' AND g.id>?':''} ORDER BY g.id LIMIT ?`,space,this.user.id,now(),...(page.after?[page.after.id]:[]),page.limit+1);
+    else if(kind==='sources'&&space)rows=await this.all(`SELECT id,title AS label FROM sources WHERE space_id=? AND status='active'${page.after?' AND id>?':''} ORDER BY id LIMIT ?`,space,...(page.after?[page.after.id]:[]),page.limit+1);
+    else throw new AppError('Choose an available list.');
+    const result=pageResult(rows.map(row=>({...row,cursor_at:member?.created_at||'2000-01-01T00:00:00.000Z'})),page,'cursor_at');
+    if(member){const states=await this.finishRoomRead(space,member,undefined,kind==='sources'?result.items:[]);if(kind==='sources')result.items=result.items.filter(row=>states.some(source=>source.id===row.id&&source.status==='active')).map(row=>({...row,label:states.find(source=>source.id===row.id)!.title}));}
+    return {...result,items:result.items.map(({cursor_at,...item})=>item)};
   }
   async roomOverview(space:string,agentId:string) {
     const member=await this.agentRoom(space,agentId);
