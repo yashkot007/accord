@@ -8,7 +8,7 @@ Use the [functional POC acceptance path](interoperability.md#functional-poc-acce
 
 The owner additionally requested Granola and personal-agent connections on 2026-10-01. The [provider connection record](provider-integrations.md) separates implemented OAuth/import behavior, plugin setup, and provider paths still awaiting verification. This extends the functional POC; it does not establish owner approval or marketplace readiness.
 
-Muse is now the owner's first provider priority. Prepare its actual onboarding and verify its real agent calls before claiming compatibility. [Muse setup](muse-connection.md) records the sign-in gate, current preparation and remaining technical requirements. The earlier Granola consent test remains unfinished; this priority change does not establish that result.
+Muse is the owner's first provider priority. Its actual consumer agent completed a browser work exchange with the existing dot through Accord. [Muse setup](muse-connection.md) records that one-owner, manually triggered result and the remaining native connector requirements. The earlier Granola consent test remains unfinished.
 
 Instinct is also requested alongside Muse. Its [setup record](instinct-connection.md) identifies the official personal assistant and distinguishes profile preparation from actual provider authorization. Custom connector support remains unverified.
 
@@ -81,7 +81,7 @@ TypeScript checking and the production build passed. The UI was inspected at pho
 
 ## Delivery order
 
-Next prove one external-client journey and its failure paths, complete recovery/support preparation, and run the observed pilot. Use that evidence to prioritize the next relationship or provider capability. Broader launch requires the operational and directory gates as well as usable core journeys; sustained voluntary return requires evidence collected over time.
+Next complete the external-client guidance journey and its failure paths, complete recovery/support preparation, and run the observed pilot. Use that evidence to prioritize the next relationship or provider capability. Broader launch requires the operational and directory gates as well as usable core journeys; sustained voluntary return requires evidence collected over time.
 
 Release `fc34c68e0632194394f06b4ff50ad7bbb6c26938` was published privately on 2026-09-30. Sites confirmed deployment `appgdep_6abdbe47d7d88191b4c1c9390c6ab345` succeeded with MCP enabled. The missing packaging helper was worked around by validating the build archive against the previous successful format; no access policy was changed. Publication confirms deployment, not provider interoperability.
 

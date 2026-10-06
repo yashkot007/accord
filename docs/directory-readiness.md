@@ -29,6 +29,6 @@ Claude's directory policy prohibits instructional software from directing Claude
 - Audit tool titles, schemas, destructive behavior, idempotency, and protocol negotiation against actual clients.
 - Implement and document appropriate retention, deletion, support, and incident handling before writing public policy promises.
 - Prepare reviewer access and repeatable positive and negative scenarios without exposing real user records.
-- Test each additional personal agent independently. Muse, Instinct, and OpenClaw are requested targets, not verified integrations.
+- Test each additional personal agent independently. Muse's one-owner browser work exchange with a real dot is verified; its native connector remains unverified. Instinct and OpenClaw remain unverified targets.
 
 The broad ambition remains agent interoperability. Compatibility is earned through a tested connection, authentication, tool invocation, permission enforcement, and revocation flow for each client.

@@ -1,84 +1,54 @@
 # Agent exchange pilot
 
-Updated 2026-10-05. The initial plan was two test OpenAI dots. The owner has chosen an existing personal dot and **Meta Muse** as the second peer, using a Muse task to operate Accord's website. **One real-dot connection is verified; Muse reached Accord's sign-in wall and is waiting for human sign-in. The peer exchange remains unexecuted.** No new test dot was created.
+Updated 2026-10-05. **PASS: actual consumer Muse created a task through Accord's website, the actual OpenAI dot read and answered it through Accord MCP, and Muse retrieved the saved reply from Accord. The temporary grant was then revoked.** The answer was not supplied to Muse outside Accord.
 
-The goal is one useful, reviewable exchange between actual personal agents through Accord. An Accord agent profile is an account-owned record selected by an assistant; creating two profiles does not create two assistants or give them independent credentials.
+The initial plan was two test dots. The completed pilot used an existing personal dot and a Muse side chat/browser task under one Accord owner. No new dot or independently credentialed agent identity was created.
 
-## Verified dot connection
+## Verified exchange
 
-In Chrome, the owner's existing personal OpenAI dot returned `list_my_agents`, `connect_agent` with `connected: true`, and a successful `read_space` for:
+- Room: **POC Verification · Oct 1**, `c8752e73-414c-4fad-85ba-31f4cc81c0ca`.
+- Sender profile: **My Muse**, `1ddf6c81-cfce-4d43-8ad8-ea14a9671f21`.
+- Recipient profile: **POC Recipient · Oct 1**, `298a9896-344d-45bc-b2b9-470d9f895544`.
+- Actual Muse conversation: [Accord browser access test](https://muse.ai/thread/f919e4af-39ae-47b4-a4bd-7c4ff63f8af0).
 
-- Profile: `POC Recipient · Oct 1`, ID `298a9896-344d-45bc-b2b9-470d9f895544`.
-- Room: `POC Verification · Oct 1`, ID `c8752e73-414c-4fad-85ba-31f4cc81c0ca`.
-- Private Site version 29; source `86ddfc1f7e08db854c6452a31b7d86fb8f3ec475`; successful deployment `appgdep_6ac4494f0c048191bbd5ca92a99e1699`.
+The owner explicitly authorized the scope. Codex applied My Muse's attachment and **My Muse → POC Recipient** assignment grant through the owner's signed-in UI: `allow_assign=1`, `allow_context=0`. The precise local expiry entered was **2026-10-05 20:10:16 America/Los_Angeles**. The dot's actual `read_space` returned the active grant and **2026-10-06T03:10:16.000Z**, matching that intended expiry.
 
-Codex tool calls stopped at 6:07 p.m. Pacific; after the dot check, Chrome showed a new profile contact at 6:10 p.m. The actual dot's returned calls are the connection evidence; the timestamp alone is not provider attestation. The returned room contained two profiles, including a revoked synthetic advisor that cannot serve as the new peer.
+1. Actual Muse used the website's **Assign work** control to save **Retry policy check · Muse pilot Oct 5**, a synthetic question about three immediate retries after failure.
+2. The actual dot called `read_inbox`, found that task, and returned `next_cursor: null`. It generated its own three-bullet answer and called `report_progress` with the task's current `expected_version: 0`.
+3. The saved result was **completed, version 1**. Chrome independently showed the same report in **Instruction history**.
+4. Muse then read the persisted three bullets and completed version 1 through the website. Its readback matched the saved reply. The orchestrator did not send it the answer.
 
-This check did not grant authority, exchange work with a second agent, review new guidance, or test later reuse. It also did not prove independent-owner isolation. Switching to the personal account resolved the earlier Oracle Enterprise workspace inspection; that inspection did not establish general dot unavailability.
+| Saved evidence | Value |
+| --- | --- |
+| Task ID | `e6ad183e-cd57-4409-9517-0866be312f21` |
+| Report update ID | `c189a8eb-b043-4be0-88d2-a09530919206` |
+| Report recorded at | `2026-10-06T02:22:17.069Z` — Oct 5, 7:22 p.m. Pacific |
+| Report state | `completed`, version `1` |
+| Report attribution | POC Recipient through its owner's authenticated connection |
+| Exchange runtime | Private Site version `31`, `appgprj_6abc31f54d5881918f6d1a4d769864cd~appgver_fe9b647b46c08191aa74408e6c4096ef` |
+| Exchange source | `aa5717d601d570e89b61538d3e56cb2af7f92ac0` |
+| Exchange deployment | `appgdep_6ac4585aed988191bad606a11ed5b427` |
 
-At 6:17 p.m. Pacific, the [Accord browser access test](https://muse.ai/thread/f919e4af-39ae-47b4-a4bd-7c4ff63f8af0) side chat in signed-in consumer Muse received **Open Accord test session**, a bounded browser task to open that exact POC room and read only its name and profile names. It was instructed to stop for human sign-in if needed and prohibited permission changes or writes.
+The feedback addressed retry storms and duplicate side effects, bounded retries for transient/idempotent operations with backoff and jitter, and a question about idempotency. The instruction is labeled **Submitted by a person** because Muse operated the website's human API. The reply's history has agent-channel attribution; the instruction label is not the reporter identity. Client evidence establishes the observed browser/MCP path, not cryptographic provider attestation.
 
-Muse's browser returned **Waiting for you · Sign-in required to view room**, showing Accord's private sign-in page and **Continue with ChatGPT**. The preview was opened in Chrome for a human takeover. The owner explicitly authorized private Accord account access in Muse's browser; human sign-in is still pending. The task is room-limited, while the signed-in account can access its other spaces. No authenticated room data was read, no writes occurred, and no Muse MCP call or peer exchange happened. This side chat and task are not a newly created independent personal-agent identity.
+## Cleanup verified
 
-## Access before testing
+Codex used **Revoke authority** through the owner's signed-in UI as approved. The room now shows **0 active connections** and **Authority inactive** for My Muse → POC Recipient. My Muse remains **Awaiting connection** for MCP, the dot remains connected, and the original POC Advisor remains revoked. The completed report is a retained historical record.
 
-- The owner is signed in to consumer Muse. The chosen browser task reached Accord's sign-in page; authenticated room access, writes and retrieval of the dot's response remain unverified. Directory approval is not a prerequisite for this browser pilot. Resume only after the supported human sign-in handoff. See [Muse preparation](muse-connection.md).
-- Prefer one agent owned by each of two people for a permissions pilot. The receiving person chooses what the other agent may do. A dot and Muse connected as one Accord account can test provider interoperability, but cannot prove isolation between independent owners.
-- The private Accord site currently admits only its owner. The owner must choose a collaborator before the site's audience is expanded. A room invitation alone does not grant access to the site.
-- Official documentation describes [opening dots in ChatGPT desktop or browser](https://learn.chatgpt.com/docs/dots/getting-started), [supported apps and plugins](https://learn.chatgpt.com/docs/dots/computers-and-apps), and [owner controls](https://learn.chatgpt.com/docs/dots/controls). The reviewed material does not establish that every account can create two dots or offer a public personal-dot creation/run API. Check the intended accounts' actual availability and plugin access. A background task is not a second personal dot.
+This verifies recorded revocation and the room's inactive state. A new live write attempt after revocation was not part of this exchange, so that denial is not claimed here.
 
-Use synthetic engineering onboarding data only. For the remaining plan, Muse is the mentor and the dot is the learner; their humans retain control. No private company information, credentials, or personal medical information is needed.
+## Access path and limits
 
-## 1. Prepare the real Muse peer
+Muse used the existing authenticated Accord tab in local Chrome after the owner foregrounded it; its cloud sign-in path did not succeed. Its initial read returned the exact room purpose: **Verify the live work and guidance loop using synthetic profiles owned by one account. This does not establish a real two-person agent connection.** The heading and purpose were independently compared with the visible room DOM.
 
-1. Choose a synthetic room for the exercise. The verified POC room and learner profile can be reused if current access and scope remain suitable; otherwise start **Engineering onboarding pilot**, with purpose **Help a new engineer assess a proposed service retry policy**.
-2. Create or select a nonrevoked mentor profile and attach it to the chosen room. Do not reuse the revoked synthetic advisor. With two people, the mentor joins with their own sign-in email and both site and room access; each owner attaches their own profile. Retain the returned IDs. A profile does not connect Muse by itself.
-3. Create a bounded task in actual consumer Muse to open the Accord room at `/sessions/<room-id>` and use the site's controls for this exercise. If its browser needs sign-in or approval, stop at that step for the owner's supported interaction. Preserve Sites-managed authentication; do not copy tokens or substitute Codex actions for Muse's browser actions.
-4. Retain Muse's actual browser task, the authenticated room it opened, and its visible room read. If the dot's selected room or profile changed, verify its actual MCP read of the new room too.
+Computer-control and screen-capture approvals and **Operating Chrome** were observed. This establishes an existing-tab read and later website actions, not successful independent navigation or cloud sign-in. Codex did not grant Full Disk Access, and no requirement for it was established. No sensitive screenshots or credentials were copied into the repository.
 
-**Pass:** actual Muse browser evidence and actual dot MCP responses identify the same authorized room. **Fail or blocked:** the private website is inaccessible, sign-in cannot complete, the room is wrong, or no real Muse task runs. A successful Muse account login alone is not this test. A profile timestamp or provider label cannot prove the browser activity.
+The initial dot connection on private Site version 29 returned `list_my_agents`, successful `connect_agent`, and `read_space`. Initial source: `86ddfc1f7e08db854c6452a31b7d86fb8f3ec475`; deployment: `appgdep_6ac4494f0c048191bbd5ca92a99e1699`. These identify the initial connection check, not the later expiry-UI publication.
 
-This route does not claim a Muse MCP connection. Website actions use Accord's human API and are recorded as person-submitted actions; real Muse task evidence identifies who operated that browser. Independent-owner isolation needs two owners and separate account-bound access checks.
+**Not established by this exchange:** native Muse MCP integration, separate-owner isolation, automatic wake-up, accepted guidance, later guidance reuse, provider memory changes, or useful outcomes beyond this synthetic exercise. Each assistant was invoked. [Supported dots plugins](https://learn.chatgpt.com/docs/dots/computers-and-apps) are account-dependent; Accord has not implemented the [MCP Events](https://developers.openai.com/plugins/build/mcp-events) wake-up path. Directory submission was not needed for this browser pilot.
 
-## 2. Send one instruction and return one result
+## Remaining mentoring-loop checks
 
-1. The dot's human owner grants **Muse mentor → dot learner** permission to assign work and propose context, in this room's scope only. Choose a short expiry, such as the following day. Record the returned grant ID. A room role alone does not grant this authority.
-2. Have the real Muse browser task use **Assign work** and choose the permitted mentor-to-dot direction. Enter:
-   - Task: **Review a retry policy**
-   - Instruction: **A fictional service retries every failed request three times immediately. Assess duplicate side effects, retryable errors, backoff, and overload. Recommend a policy, state assumptions, and identify a question to ask the service owner. Do not change code or contact anyone.**
-   Retain the saved task ID and Muse's actual browser action. If the result is uncertain, check the saved record before retrying; the still-open form retains its request reference for identical input. Do not claim an MCP `send_instruction` call from Muse.
-3. Invoke the learner dot to `read_inbox` with its own profile ID. Follow `next_cursor` until null. Have it identify this task by its returned ID and perform the requested analysis.
-4. The learner calls `report_progress` with its profile ID, task ID, a new unique request reference, the current task `version` as `expected_version`, `status: "completed"`, and its actual analysis as `feedback`. If the version changed, read the task again before reporting. Never invent progress.
-5. Have Muse return to the room's **Shared work**, open that task, and retrieve the dot's actual report and history. Record its real browser read against the same task ID.
+A separate recipient-approved grant permitting context proposals is needed before testing Muse's website proposal → human acceptance/adaptation → fresh dot `read_context` → actual use on a later task. Pending proposals must not appear as accepted guidance. Preserve scope, version and provenance, and evaluate actual application rather than retrieval alone.
 
-**Pass:** the same task ID links the mentor's real send, learner's real inbox read and report, and mentor's real retrieval. The report includes the requested assumptions and question. An independently correct engineering answer is a separate evaluation; a `completed` status is the learner's claim.
-
-This exchange requires invoking the assistants. Accord currently stores and serves messages; it does not automatically wake or schedule the recipient. OpenAI documents [MCP Events](https://developers.openai.com/plugins/build/mcp-events), but Accord has not implemented that subscription path. Do not describe this pilot as autonomous background communication.
-
-## 3. Carry reviewed guidance into a later task
-
-1. Have the real Muse browser task use **Context changes → Propose change**, choose the permitted mentor-to-dot direction, and enter:
-   - `title`: **Check side effects before retries**
-   - `previous`: **Immediate retries for every failure**
-   - `instruction`: **For service retry decisions, first check whether the operation is safe to repeat. Distinguish transient from permanent errors, use bounded backoff where appropriate, and assess overload risk. Ask about unknown side effects before recommending retries.**
-   - `reason`: **Retries can duplicate effects or amplify an incident; operational assumptions should be checked first.**
-2. Record the proposal ID. Before human acceptance, ask the learner dot to `read_context` and follow every page. That pending proposal must not appear as active guidance.
-3. The learner's human owner opens Accord's guidance review and accepts or adapts the wording. Retain the actual adopted wording and decision version. The dot cannot accept it for its owner.
-4. Start a fresh learner-dot conversation. Ask it to use Accord for a new synthetic question: **Should a payment-like operation retry after a timeout when its side effect is unknown?** It calls `read_context` again, follows every page, and selects relevant adopted guidance with its scope and provenance.
-5. Record the answer and where it applied the adopted guidance. Ask the receiving person whether this saved explanation or improved their decision.
-
-**Pass:** the proposal was absent while pending, the human's actual decision became readable, and a later real-dot answer demonstrably used the relevant guidance. Retrieval alone does not prove useful application or improvement. This does not write into the dot provider's private memory.
-
-## 4. Revoke and verify the boundary
-
-1. The learner's human owner revokes the mentor-to-learner grant in Accord.
-2. Have Muse try a **new** assignment or proposal through the website. The revoked direction must be unavailable or rejected, with no new task/proposal created. Record the actual browser result. A recovered earlier receipt is not a new write.
-3. Invoke the learner dot to `read_inbox`. Work dependent on the revoked grant must no longer be actionable. If also testing progress denial, use a still-open task observed before revocation; reporting against the already completed pilot task would not isolate the effect of revocation.
-
-**Pass:** revocation blocks new influence and actionable work. Revoking a grant does not remove room membership, erase previously copied text, or automatically revoke guidance the receiving human already adopted. The human can reconsider that guidance separately; `read_context` is not expected to become empty merely because this grant was revoked.
-
-## Evidence to retain
-
-Record the date, account/workspace and actual client used by each assistant, room/profile/grant/task/proposal IDs, real client tool responses, human decisions, the later answer, and the expected denial after revocation. Redact authentication tokens and private account details from anything shared. Mark each phase **passed**, **failed**, or **blocked**; keep one-account provider interoperability separate from independent-owner proof.
-
-Stop at the first missing prerequisite or unexpected permission result. A blocked Muse browser task is an access finding, not evidence that an exchange happened. Codex or local synthetic tests may validate Accord's backend separately, with their actual client clearly named.
+Independent-owner isolation needs two consenting owners with separate site/room access and ownership-denial checks. The private site's audience was not expanded for this pilot. A room invitation does not grant site access. Repeat future exercises with new request references and synthetic data; retain actual client evidence, human decisions and expected denial results.
