@@ -3,10 +3,11 @@ export class RequestFailure extends Error {
   constructor(message:string,status=0){super(message);this.status=status;}
 }
 /** No automatic retry of writes. Callers retain request IDs and let the person retry. */
-export async function clientRequest(path:string, action?:string, args?:Record<string,unknown>) {
+export async function clientRequest(path:string, action?:string, args?:Record<string,unknown>, options:{expectedOwnerId?:string}={}) {
   const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),20000);
   try{
-    const response=await fetch(path,{...(action?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,args})}:{cache:'no-store' as const}),signal:controller.signal});
+    const headers={...(action?{'Content-Type':'application/json'}:{}),...(options.expectedOwnerId===undefined?{}:{'X-Accord-Expected-Owner':options.expectedOwnerId})};
+    const response=await fetch(path,{...(action?{method:'POST',body:JSON.stringify({action,args})}:{cache:'no-store' as const}),...(action||options.expectedOwnerId!==undefined?{headers}:{}),signal:controller.signal});
     let result:Record<string,any>;try{result=await response.json() as Record<string,any>;}catch{throw new RequestFailure('Accord returned an unreadable response. Your input is still here. Refresh before resubmitting.',response.status);}
     if(!response.ok)throw new RequestFailure(result.error||'This action could not be completed. Your input is still here.',response.status);
     return result;
