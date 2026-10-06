@@ -64,3 +64,7 @@
 @media(prefers-reduced-motion:reduce){.room-work-card{transition:none}}
 @media(max-width:720px){.accord-session-workspace .room-heading{flex-direction:column;gap:22px}.room-work-open{padding:20px}.room-work-meta{align-items:flex-start}.room-presence{gap:18px}.room-review-link{margin-left:0}}
 @media(max-width:720px){.accord-session-workspace .topbar{padding:14px 20px;gap:10px}.session-tools{gap:14px}.accord-session-workspace main{padding:32px 20px 48px}.accord-session-workspace .overview-grid,.accord-session-workspace .connection-grid{grid-template-columns:1fr}.accord-session-workspace .page-heading{gap:20px}.accord-session-workspace .tabs{gap:22px}.accord-session-workspace .agent-node{display:flex;flex-wrap:wrap}}
+
+.refresh-spinning{animation:accord-refresh-spin .8s linear infinite}
+@keyframes accord-refresh-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.refresh-spinning{animation:none}}
