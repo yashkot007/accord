@@ -231,11 +231,11 @@ export class Workspace {
     ]);
     return {user:this.user,spaces:spaces.items,agents:agents.items,events:events.items,home,counts,pages:Object.fromEntries([spaces,agents,events].map(page=>[page.section,{next_cursor:page.next_cursor,complete:page.complete}]))};
   }
-  async humanSetup(space:string) {
+  async humanSetup(space?:string) {
     await this.stmt('INSERT INTO people (id,email,name) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,name=excluded.name',this.user.id,this.user.email,this.user.name).run();
-    const room=await this.member(space),profiles=await this.one("SELECT EXISTS(SELECT 1 FROM agents WHERE owner_id=? AND status<>'revoked') AS available",this.user.id);
-    await this.finishRoomRead(space,room);
-    return {user:this.user,room,has_profiles:!!profiles?.available};
+    const room=space?await this.member(space):undefined,profiles=await this.one("SELECT EXISTS(SELECT 1 FROM agents WHERE owner_id=? AND status<>'revoked') AS available",this.user.id);
+    if(space&&room)await this.finishRoomRead(space,room);
+    return {user:this.user,...(room?{room}:{}),has_profiles:!!profiles?.available};
   }
   async humanRoom(space:string) {
     const member=await this.member(space);
@@ -785,12 +785,23 @@ export class Workspace {
     if (name === 'read_inbox') {
       const status=field(a,'status',30,true);
       if(status&&!['queued','working','needs_input'].includes(status))throw new AppError('Choose queued, working, or needs_input.');
-      const page=pageRequest(a,JSON.stringify(['inbox',this.user.id,aid,status]));
-      const rows=await this.all(`SELECT t.*,g.scope FROM tasks t JOIN grants g ON g.id=t.grant_id
-        WHERE t.to_agent=? AND t.status IN ('queued','working','needs_input') AND g.allow_assign=1 AND ${liveGrant}
+      const projection=field(a,'projection',20,true)||'full';
+      if(!['summary','full'].includes(projection))throw new AppError('Choose summary or full instructions.');
+      // Keep existing full-page references valid; summary references select a different contract.
+      const page=pageRequest(a,JSON.stringify(['inbox',this.user.id,aid,status,...(projection==='summary'?['summary']:[])]));
+      const select=projection==='summary'
+        ? `t.id,t.space_id,t.grant_id,t.from_agent,t.to_agent,t.title,t.status,t.version,g.scope,t.channel,t.created_at,t.updated_at,
+          sender.name AS from_name,recipient.name AS to_name,substr(t.body,1,300) AS body_preview,
+          length(t.body) AS body_characters,CASE WHEN t.feedback<>'' THEN 1 ELSE 0 END AS feedback_available`
+        : 't.*,g.scope';
+      const rows=await this.all(`SELECT ${select} FROM tasks t JOIN grants g ON g.id=t.grant_id
+        ${projection==='summary'?'JOIN agents sender ON sender.id=t.from_agent JOIN agents recipient ON recipient.id=t.to_agent':''}
+        WHERE t.to_agent=? AND EXISTS (SELECT 1 FROM agents owned WHERE owned.id=? AND owned.owner_id=? AND owned.status<>'revoked')
+        AND t.status IN ('queued','working','needs_input') AND g.allow_assign=1 AND ${liveGrant}
         ${status?' AND t.status=?':''}${page.after?' AND (t.created_at>? OR (t.created_at=? AND t.id>?))':''}
-        ORDER BY t.created_at,t.id LIMIT ?`,aid,now(),...(status?[status]:[]),...(page.after?[page.after.at,page.after.at,page.after.id]:[]),page.limit+1);
+        ORDER BY t.created_at,t.id LIMIT ?`,aid,aid,this.user.id,now(),...(status?[status]:[]),...(page.after?[page.after.at,page.after.at,page.after.id]:[]),page.limit+1);
       const result=pageResult(rows,page);
+      if(projection==='summary')return {instructions:result.items.map(row=>({...row,feedback_available:!!row.feedback_available})),next_cursor:result.next_cursor,projection:'summary',note:'These are previews for choosing work. Read the complete relevant instruction and its current authority with read_task before acting or reporting; previews do not include the full body or saved reports.'};
       return {instructions:result.items,next_cursor:result.next_cursor};
     }
     if (name === 'read_context') {

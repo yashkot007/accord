@@ -49,7 +49,7 @@ export async function handleMcpPost(request:Request,resolveWorkspace:()=>Promise
     const params=message.params;
     if(message.method==='initialize'){
       if(!record(params)||typeof params.protocolVersion!=='string'||!params.protocolVersion||!record(params.capabilities)||!record(params.clientInfo)||typeof params.clientInfo.name!=='string'||!params.clientInfo.name||typeof params.clientInfo.version!=='string'||!params.clientInfo.version)return failure(id,-32602,'Initialization requires protocolVersion, capabilities, and clientInfo with name and version.');
-      return reply(id,{protocolVersion:protocolVersions.includes(params.protocolVersion)?params.protocolVersion:protocolVersions[0],capabilities:{tools:{listChanged:false}},serverInfo:{name:'accord',title:'Accord',version:'0.11.1'},instructions:agentInstructions});
+      return reply(id,{protocolVersion:protocolVersions.includes(params.protocolVersion)?params.protocolVersion:protocolVersions[0],capabilities:{tools:{listChanged:false}},serverInfo:{name:'accord',title:'Accord',version:'0.12.0'},instructions:agentInstructions});
     }
     if(message.method==='ping')return reply(id,{});
     if(message.method==='tools/list'){
