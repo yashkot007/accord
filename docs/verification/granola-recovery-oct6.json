@@ -1,0 +1,132 @@
+{
+  "recorded_at": "2026-10-06T18:50:45.327691+00:00",
+  "scope": "Granola connection recovery; existing shared personal-assistant setup preserved",
+  "source_before": "56edc74066da6d0fe8709e1e6e6c6dc4cb549acb",
+  "source_sha256": {
+    "app/provider-connections.tsx": "35188f2bbe949631f530d0d98760daa640945811d10dc06ac9fe34a6010b592e",
+    "lib/load-lifecycle.ts": "b862ea98aa73694cd9fbdf974625e31db256f8f1c6d48635e127d0c88bd2d3ac",
+    "lib/granola-http.ts": "40ab91ca002d5aa8c7823531a6f8b5139ad7170b7188428717be57bf50a5c0c1",
+    "lib/granola-mcp.ts": "87aff78304269ca2a56eb25b9a9506c7fc1fd473450c31c15dc4556364be482d",
+    "lib/granola.ts": "cb0b62bb3d902433d30e567037855e1d1607b966cbc5e5b913a954ad448ecc59",
+    "tests/granola.test.mjs": "afbee5ffab3757da6dadcb4ed9722ee34e1337a980af88574074fffbd4df72fd",
+    "tests/granola-deadline.test.mjs": "06818acfafbc1d7e4981f70cc358c40978c0f15c7c63149046730bea0c9350ea",
+    "tests/granola-http-bounds.test.mjs": "65d22db75945f7884c51d044fd28c697d70065dcf13cabc536de9108bc8c5d0f",
+    "tests/granola-workflow-recovery.test.mjs": "7a297f4f68571ee552b531aee1f2f372a5763c68e17071803a55419a8e83fb48",
+    "tests/provider-loading.test.mjs": "e3f3825b39d7307e64cdbf1862cc405d13814b8f217dabb258d9fe3f208ce6ee"
+  },
+  "environment": {
+    "identity": "synthetic local Workspace accounts",
+    "database": "isolated in-memory SQLite with repository migrations",
+    "provider": "synthetic injected fetch adapter; no real consent, credentials or note reads",
+    "clock": "deterministic mock time for deadline scenarios"
+  },
+  "validation": {
+    "whole_project_tests": 326,
+    "passed": 326,
+    "new_tests": 49,
+    "granola_and_loading_tests": 68,
+    "typescript": "passed",
+    "deterministic_agent_packages": "passed; unchanged contract",
+    "diff_check": "passed"
+  },
+  "human_recovery": {
+    "implemented": [
+      "Failed status checks leave Checking and show Couldn’t check plus explicit Retry",
+      "Failed or empty reading-option discovery offers explicit Retry",
+      "Authentication rejection requests a new sign-in instead of retrying rejected access",
+      "Late or unmounted responses cannot update a changed lifecycle",
+      "No retry replays connect, preview, share or disconnect",
+      "Review text, selected destination and sharing receipt are preserved by loading retries"
+    ],
+    "evidence": "6 lifecycle and actual-client transport tests, source review; not rendered browser verification"
+  },
+  "incoming_bounds": {
+    "bytes": 131072,
+    "upload_deadline_ms": 5000,
+    "before_authenticated_service_loading": true,
+    "coverage": [
+      "exact application/json media type, same origin and method",
+      "malformed and unsupported action before service loading",
+      "declared, chunked and understated over-limit bodies",
+      "maximum reviewed excerpt with CJK, supplementary Unicode and JSON control escapes",
+      "stalled and trickled upload with uncooperative cancellation",
+      "pre-aborted and interrupted upload",
+      "share/disconnect wait for actual durable settlement"
+    ]
+  },
+  "provider_deadlines": {
+    "individual_fetch_and_consumption_ms": 12000,
+    "shared_upstream_workflow_ms": 18000,
+    "shared_from": "HTTP entry, including elapsed upload and authentication; callback has its own 18-second budget",
+    "coverage": [
+      "ignored fetch abort and late body",
+      "ignored stream cancellation and late rejection",
+      "JSON headers and body share a deadline",
+      "SSE stalled, malformed and complete open streams",
+      "notifications discard without waiting for cancellation",
+      "paginated discovery shares the workflow budget",
+      "clock reversal cannot replenish a budget"
+    ],
+    "limit": "Does not establish a bound on authentication, SQL, local crypto, queueing or edge request latency; dispatched durable writes are not raced or abandoned"
+  },
+  "workflow_regression": {
+    "historical_reproduction": "Three individually bounded 8-second requests or four 6-second requests returned HTTP200 at24seconds after the actual client timed out at20seconds, leaving a pending flow or private preview",
+    "after": [
+      {
+        "action": "connect",
+        "clock": "deterministic mocked time",
+        "returned_status": 502,
+        "settled_at_ms": 18000,
+        "client_timeout_ms": 20000,
+        "provider_calls": 3,
+        "observed_after_ms": 24000,
+        "late_pending_flow": false,
+        "late_private_preview": false
+      },
+      {
+        "action": "tools",
+        "clock": "deterministic mocked time",
+        "returned_status": 502,
+        "settled_at_ms": 18000,
+        "client_timeout_ms": 20000,
+        "provider_calls": 3,
+        "observed_after_ms": 24000,
+        "late_pending_flow": false,
+        "late_private_preview": false
+      },
+      {
+        "action": "preview",
+        "clock": "deterministic mocked time",
+        "returned_status": 502,
+        "settled_at_ms": 18000,
+        "client_timeout_ms": 20000,
+        "provider_calls": 3,
+        "observed_after_ms": 24000,
+        "late_pending_flow": false,
+        "late_private_preview": false
+      }
+    ],
+    "callback": "One-use callback fails its flow and clears encrypted details; late work cannot replace the prior connection",
+    "precommit": "Budget expiry during sealing prevents a new pending flow or private preview"
+  },
+  "authorization_recovery": {
+    "coverage": [
+      "Expired access without refresh requires sign-in and sends no provider request",
+      "Initialize, tool-list and note-read HTTP401 invalidate the exact failed credential once",
+      "Repeated reads after invalidation do not contact the provider",
+      "Late401 preserves a newer connection, replaced credential or refresh in progress",
+      "Concurrent401 causes one version increment",
+      "Transient502 retains authorization and permits a subsequent read",
+      "Budget expiry before reading or during lease acquisition retains unused refresh credentials",
+      "A received rotating token persists through guarded storage even after sealing spends the budget, and the original refresh token is not replayed"
+    ],
+    "guard": "Authenticated owner, connection ID, exact encrypted credential and refresh lease state"
+  },
+  "release_and_external_limits": {
+    "production_build_and_private_publication": "subsequent release receipt",
+    "chrome": "New Granola controls have not been visually verified; prior session check awaits dismissal of an open Chrome extension UI",
+    "native_providers": "No native Claude/Grok/Muse OAuth exchange or universal compatibility established",
+    "granola": "Real consent/callback, provider schema and selected note read remain unverified",
+    "operations": "No production capacity, distributed rate protection, retention/alerts, independent-owner acceptance or operational recovery claim"
+  }
+}
