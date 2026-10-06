@@ -20,6 +20,8 @@ type AgentProfile = {
 type ConnectionState = { user:{id:string};profile?:AgentProfile;attached?:boolean;has_profiles?:boolean };
 type Props = { spaceId?: string; initialProfileId?: string; userId: string; onClose: () => void; onAttached: () => void };
 type Creation = { signature: string; requestId: string; profileId?: string };
+type CopyTarget = 'setup' | 'instructions';
+type CopyFeedback = { kind: 'copied' | 'manual'; target: CopyTarget; message: string };
 
 function contactTime(value: string) {
   const date = new Date(value);
@@ -39,6 +41,7 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
   const copyButton = useRef<HTMLButtonElement>(null);
   const installation = useRef<HTMLDivElement>(null), setupField = useRef<HTMLTextAreaElement>(null);
   const mounted = useRef(false), revision = useRef(0), writing = useRef(false);
+  const copyPending = useRef(false);
   const creation = useRef<Creation | null>(null);
   const setup = useRef<{ profileId: string; baseline: string | null; baselineVersion: number } | null>(null);
   const [hasProfiles,setHasProfiles]=useState(false);
@@ -52,7 +55,8 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
   const [access, setAccess] = useState(false), [error, setError] = useState('');
   const [contact, setContact] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false), [copyError, setCopyError] = useState('');
+  const [copied, setCopied] = useState(false), [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
+  const [copying,setCopying]=useState<CopyTarget | null>(null);
   const [setupFallback, setSetupFallback] = useState('');
   const [instructionsOpen, setInstructionsOpen] = useState(false);
 
@@ -65,7 +69,11 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
     (next || copyButton.current)?.focus();
   }, [step]);
   useEffect(() => { if (instructionsOpen) instructionsField.current?.focus(); }, [instructionsOpen]);
-  useEffect(() => { if (setupFallback) { setupField.current?.focus(); setupField.current?.select(); } }, [setupFallback]);
+  useEffect(() => {
+    if(copyFeedback?.kind!=='manual')return;
+    const field=copyFeedback.target==='setup'?setupField.current:instructionsField.current;
+    field?.focus();field?.select();
+  }, [copyFeedback]);
 
   async function freshState(profileId?:string) {
     const params=new URLSearchParams();if(spaceId)params.set('space',spaceId);if(profileId)params.set('profile',profileId);else params.set('setup','yes');
@@ -76,7 +84,7 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
 
   async function loadOptions(profileId?:string) {
     const request = ++revision.current;
-    setLoading(true); setError(''); setAccess(false); setContact(null);
+    setLoading(true); setError(''); setAccess(false); setContact(null);setCopied(false);setCopyFeedback(null);setSetupFallback('');
     try {
       const state=await freshState();
       if (!current(request)) return;
@@ -138,7 +146,7 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
     if (mode === 'existing' && !selectedId) return;
     writing.current = true;
     const request = ++revision.current;
-    setBusy(true); setError(''); setCopyError('');
+    setBusy(true); setError(''); setCopyFeedback(null);
     try {
       // Recheck the account and, when present, room access before either write.
       await freshState();
@@ -182,14 +190,14 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
     if(writing.current||loading)return;
     creation.current=null;setup.current=null;
     setCreatedId(null);setProfile(null);setSelectedId('');setProvider('');setName('');setStep(1);setMode('existing');setContact(null);
-    setCopied(false);setCopyError('');setSetupFallback('');setInstructionsOpen(false);setSelectionRevision(value=>value+1);
+    setCopied(false);setCopyFeedback(null);setSetupFallback('');setInstructionsOpen(false);setSelectionRevision(value=>value+1);
     void loadOptions();
   }
 
   async function checkContact() {
     if (writing.current || loading || !setup.current) return;
     const request = ++revision.current;
-    setLoading(true); setError(''); setAccess(false); setContact(null);
+    setLoading(true); setError(''); setAccess(false); setContact(null);setCopied(false);setCopyFeedback(null);setSetupFallback('');
     try {
       const state = await freshState(setup.current.profileId);
       if (!current(request)) return;
@@ -206,23 +214,31 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
   const recipe = profile ? assistantFor(profile.provider) : null;
   const instructions = profile ? recipe?.id === 'muse' ? museConnectionRequest(endpoint, profile, spaceId) : verificationPrompt(profile, spaceId) : '';
 
-  async function copyInstructions() {
+  async function copyText(value:string,target:CopyTarget) {
+    // Clipboard writes cannot be cancelled. Keep them in order and ignore feedback
+    // from an earlier room/account check after its connection revision changes.
+    if(copyPending.current||loading||!access||!value)return;
     const request = revision.current;
-    setCopyError('');
+    copyPending.current=true;setCopying(target);setCopied(false);setCopyFeedback(null);setSetupFallback('');
     try {
-      await navigator.clipboard.writeText(instructions);
-      if (current(request)) setCopied(true);
+      await navigator.clipboard.writeText(value);
+      if(current(request)){
+        setCopied(target==='instructions');
+        setCopyFeedback({kind:'copied',target,message:'Copied. Continue in your assistant.'});
+      }
     } catch {
-      if (current(request)) { setInstructionsOpen(true); instructionsField.current?.focus(); setCopyError('Select and copy the instructions below.'); }
+      if(current(request)){
+        if(target==='instructions')setInstructionsOpen(true);else setSetupFallback(value);
+        setCopyFeedback({kind:'manual',target,message:'Select and copy the text shown here.'});
+      }
+    }finally{
+      copyPending.current=false;
+      if(mounted.current)setCopying(null);
     }
   }
 
-  async function copySetup(value: string) {
-    const request=revision.current;
-    setCopyError(''); setSetupFallback('');
-    try { await navigator.clipboard.writeText(value); if(current(request)){setCopied(false);setCopyError('Setup copied. Continue in your assistant.');} }
-    catch { if(current(request))setSetupFallback(value); }
-  }
+  const copyInstructions=()=>copyText(instructions,'instructions');
+  const copySetup=(value:string)=>copyText(value,'setup');
 
   return <dialog ref={dialog} className="agent-connection-dialog" aria-labelledby="agent-connection-title" aria-describedby="agent-connection-description" onCancel={event => {
     if (writing.current) event.preventDefault(); else close();
@@ -238,10 +254,10 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
     </form>}
 
     {step === 2 && profile && access && <><div className="agent-connection-profile"><Bot size={21} /><div><strong>{profile.name}</strong><span>{profile.provider}</span></div><span className="agent-connection-attached">{spaceId ? 'In this room' : 'Saved assistant'}</span></div>
-      {recipe?.id !== 'muse' && <div ref={installation}><AssistantInstallGuide recipe={recipe!} endpoint={endpoint} profile={profile} spaceId={spaceId} onCopy={value => void copySetup(value)}/></div>}
+      {recipe?.id !== 'muse' && <div ref={installation}><AssistantInstallGuide recipe={recipe!} endpoint={endpoint} profile={profile} spaceId={spaceId} copyBusy={!!copying} copyingSetup={copying==='setup'} onCopy={value => void copySetup(value)}/></div>}
       {setupFallback && <div className="form-field"><label htmlFor="agent-setup-copy">Select and copy</label><textarea ref={setupField} id="agent-setup-copy" value={setupFallback} readOnly rows={5}/></div>}
       <details className="muse-connection-details"><summary>Connection details</summary><label htmlFor="agent-connection-address">Connection address</label><input id="agent-connection-address" value={endpoint} readOnly/>{recipe?.documentation&&<p><a href={recipe.documentation} target="_blank" rel="noreferrer">Official setup guide</a></p>}{recipe?.packagePath&&recipe.packageKind!=='plugin'&&<p><a href={recipe.packagePath} download>Setup notes</a></p>}<p>Native Claude, Grok Bot and Muse sign-in still needs verification. Use your own Accord sign-in. Contact records activity for this saved assistant; it does not identify the provider or confirm background work.</p></details>
-      <section className="agent-connection-instructions" aria-label="Instructions for your assistant"><button ref={copyButton} type="button" className="button primary" onClick={copyInstructions}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copied' : recipe?.id === 'muse' ? 'Copy setup instructions' : 'Copy verification prompt'}</button><details className="muse-connection-details" open={instructionsOpen} onToggle={event=>setInstructionsOpen(event.currentTarget.open)}><summary>View instructions</summary><textarea ref={instructionsField} id="agent-connection-instructions" aria-label="Instructions for your assistant" value={instructions} readOnly rows={7} spellCheck={false} /></details>{copyError && <p role="status" className="agent-connection-hint">{copyError}</p>}</section>
+      <section className="agent-connection-instructions" aria-label="Instructions for your assistant"><button ref={copyButton} type="button" className="button primary" aria-disabled={!!copying} onClick={()=>void copyInstructions()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copying==='instructions' ? 'Copying…' : copied ? 'Copied' : recipe?.id === 'muse' ? 'Copy setup instructions' : 'Copy verification prompt'}</button><details className="muse-connection-details" open={instructionsOpen} onToggle={event=>setInstructionsOpen(event.currentTarget.open)}><summary>View instructions</summary><textarea ref={instructionsField} id="agent-connection-instructions" aria-label="Instructions for your assistant" value={instructions} readOnly rows={7} spellCheck={false} /></details>{(copying||copyFeedback)&&<p role="status" className={`agent-connection-feedback ${copying?'':copyFeedback?.kind||''}`}>{copying?'Copying…':copyFeedback?.message}</p>}</section>
       <div className={`agent-connection-contact${contact ? ' received' : ''}`} role="status"><span className="agent-connection-dot" /><div><strong>{contact ? 'Contact received' : 'Waiting for your assistant'}</strong><p>{contact ? contactTime(contact) : setup.current?.baseline ? `Last contact: ${contactTime(setup.current.baseline)}` : 'Copy the instructions, then continue in your assistant.'}</p></div></div>
       <p className="agent-connection-hint">{spaceId ? 'Your assistant will confirm whether it could read this room.' : 'Your assistant will ask which room to use.'}</p>
     </>}
