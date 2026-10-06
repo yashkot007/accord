@@ -30,3 +30,43 @@ test('the workspace cap accepts the full source field including UTF-8 and JSON e
     assert.equal(await readBoundedText(streamed([bytes(body)]).request,128*1024),body);
   }
 });
+
+test('an uncooperative cancellation promise cannot hold an oversized rejection',async()=>{
+  for(const declared of [false,true]){
+    let cancelled=false;
+    const body=new ReadableStream({start(controller){controller.enqueue(bytes('oversized'));},cancel(){cancelled=true;return new Promise(()=>{});}});
+    const request=new Request('https://accord.test/api',{method:'POST',body,duplex:'half',headers:declared?{'content-length':'100'}:{}});
+    await assert.rejects(readBoundedText(request,3),{status:413});assert.equal(cancelled,true);
+  }
+});
+
+test('a total upload deadline stops a stalled body even when cancellation never settles',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  let cancelled=false;
+  const body=new ReadableStream({cancel(){cancelled=true;return new Promise(()=>{});}});
+  const request=new Request('https://accord.test/api',{method:'POST',body,duplex:'half'});
+  const pending=readBoundedText(request,100,{timeoutMs:5000});
+  t.mock.timers.tick(5000);
+  await assert.rejects(pending,{status:408});assert.equal(cancelled,true);assert.equal(body.locked,false);
+});
+
+test('new chunks do not extend the total upload deadline',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  let controller;
+  const body=new ReadableStream({start(value){controller=value;}});
+  const pending=readBoundedText(new Request('https://accord.test/api',{method:'POST',body,duplex:'half'}),100,{timeoutMs:5000});
+  t.mock.timers.tick(3000);controller.enqueue(bytes('partial'));
+  await Promise.resolve();
+  t.mock.timers.tick(2000);
+  await assert.rejects(pending,{status:408});assert.equal(body.locked,false);
+});
+
+test('pre-aborted and interrupted uploads stop without returning partial text',async()=>{
+  const before=new AbortController();before.abort();
+  await assert.rejects(readBoundedText(new Request('https://accord.test/api',{method:'POST',body:'valid',signal:before.signal}),100),{status:400});
+  let cancelled=false;
+  const during=new AbortController(),body=new ReadableStream({cancel(){cancelled=true;return new Promise(()=>{});}});
+  const pending=readBoundedText(new Request('https://accord.test/api',{method:'POST',body,duplex:'half',signal:during.signal}),100);
+  during.abort();
+  await assert.rejects(pending,{status:400});assert.equal(cancelled,true);assert.equal(body.locked,false);
+});

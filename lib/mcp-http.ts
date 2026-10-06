@@ -1,4 +1,5 @@
-import { readBoundedText } from './request-body.ts';
+import { discardRequestBody, readBoundedText } from './request-body.ts';
+import { isHeavyMcpRead, mcpAdmission, type McpAdmission } from './mcp-admission.ts';
 import { AccordHost } from './host.ts';
 import { agentTools } from './agent-tools.ts';
 import { agentInstructions } from './agent-instructions.ts';
@@ -11,6 +12,11 @@ const noStore = {'Cache-Control':'no-store'};
 const reply = (id:unknown,result:unknown) => Response.json({jsonrpc:'2.0',id,result},{headers:noStore});
 const failure = (id:unknown,code:number,message:string,status=200) => Response.json({jsonrpc:'2.0',...(requestId(id)?{id}:{}),error:{code,message}},{status,headers:noStore});
 const toolError = (id:unknown,message:string) => reply(id,{isError:true,content:[{type:'text',text:message}]});
+const busy = (id:unknown) => {
+  const response = failure(id,-32000,'Accord is busy. Wait at least one second, then retry with the same arguments and request reference.',429);
+  response.headers.set('Retry-After','1');
+  return response;
+};
 
 // Validate the server's fixed string/integer tool schemas before any service is resolved.
 function inputError(definition:typeof agentTools[number],args:Record<string,unknown>):string|null {
@@ -29,27 +35,31 @@ function inputError(definition:typeof agentTools[number],args:Record<string,unkn
 }
 
 /** The hosting adapter supplies identity; callers cannot supply or replace this resolver. */
-export async function handleMcpPost(request:Request,resolveWorkspace:()=>Promise<Workspace>) {
+export async function handleMcpPost(request:Request,resolveWorkspace:()=>Promise<Workspace>,admission:McpAdmission=mcpAdmission) {
   let id:string|number|null=null;
+  let releaseBody:(()=>void)|null=null,releaseTool:(()=>void)|null=null,releaseAccount:(()=>void)|null=null;
   try{
     const origin=request.headers.get('origin');
-    if(origin&&origin!==new URL(request.url).origin)return failure(null,-32000,'Origin not allowed.',403);
-    if(request.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='application/json')return failure(null,-32600,'Expected application/json.',415);
-    const raw=await readBoundedText(request,128*1024);
+    if(origin&&origin!==new URL(request.url).origin){discardRequestBody(request);return failure(null,-32000,'Origin not allowed.',403);}
+    if(request.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='application/json'){discardRequestBody(request);return failure(null,-32600,'Expected application/json.',415);}
+    const version=request.headers.get('MCP-Protocol-Version');
+    if(version&&!protocolVersions.includes(version)){discardRequestBody(request);return failure(null,-32600,'Unsupported MCP protocol version.',400);}
+    releaseBody=admission.claimBody();
+    if(!releaseBody){discardRequestBody(request);return busy(null);}
+    const raw=await readBoundedText(request,128*1024,{timeoutMs:admission.limits.bodyTimeoutMs});
     let message:unknown;try{message=JSON.parse(raw);}catch{return failure(null,-32700,'Invalid JSON.',400);}
     if(!record(message)||message.jsonrpc!=='2.0'||typeof message.method!=='string'||!message.method)return failure(null,-32600,'Invalid request.',400);
     const hasId=Object.hasOwn(message,'id');
     if(hasId&&!requestId(message.id))return failure(null,-32600,'Request ID must be a string or safe integer.',400);
     if(hasId)id=message.id;
     if(message.params!==undefined&&!record(message.params))return failure(id,-32602,'Parameters must be an object.',400);
-    const version=request.headers.get('MCP-Protocol-Version');
-    if(version&&!protocolVersions.includes(version))return failure(id,-32600,'Unsupported MCP protocol version.',400);
+    releaseBody();releaseBody=null;
     // One-way messages never invoke a tool or return a JSON-RPC response.
     if(!hasId)return new Response(null,{status:202,headers:noStore});
     const params=message.params;
     if(message.method==='initialize'){
       if(!record(params)||typeof params.protocolVersion!=='string'||!params.protocolVersion||!record(params.capabilities)||!record(params.clientInfo)||typeof params.clientInfo.name!=='string'||!params.clientInfo.name||typeof params.clientInfo.version!=='string'||!params.clientInfo.version)return failure(id,-32602,'Initialization requires protocolVersion, capabilities, and clientInfo with name and version.');
-      return reply(id,{protocolVersion:protocolVersions.includes(params.protocolVersion)?params.protocolVersion:protocolVersions[0],capabilities:{tools:{listChanged:false}},serverInfo:{name:'accord',title:'Accord',version:'0.12.0'},instructions:agentInstructions});
+      return reply(id,{protocolVersion:protocolVersions.includes(params.protocolVersion)?params.protocolVersion:protocolVersions[0],capabilities:{tools:{listChanged:false}},serverInfo:{name:'accord',title:'Accord',version:'0.13.0'},instructions:agentInstructions});
     }
     if(message.method==='ping')return reply(id,{});
     if(message.method==='tools/list'){
@@ -63,7 +73,13 @@ export async function handleMcpPost(request:Request,resolveWorkspace:()=>Promise
     const args=Object.hasOwn(params,'arguments')?params.arguments:{};
     if(!record(args))return failure(id,-32602,'Tool arguments must be an object.');
     const invalid=inputError(definition,args);if(invalid)return toolError(id,invalid);
+    if(request.signal.aborted)throw new AppError('This request was interrupted. Please try again.',400);
+    releaseTool=admission.claimTool(isHeavyMcpRead(params.name,args));
+    if(!releaseTool)return busy(id);
     const workspace=await resolveWorkspace();
+    if(request.signal.aborted)throw new AppError('This request was interrupted. Please try again.',400);
+    releaseAccount=admission.claimAccount(workspace.user.id);
+    if(!releaseAccount)return busy(id);
     try{
       const host=new AccordHost(workspace);
       const result=params.name==='list_sessions'?await host.agentSessions(args):['arrive_at_accord','consult_host','enter_room','leave_accord'].includes(params.name)?await host.perform(params.name,args,'agent'):await workspace.agentTool(params.name,args);
@@ -73,6 +89,9 @@ export async function handleMcpPost(request:Request,resolveWorkspace:()=>Promise
     if(error instanceof AppError)return failure(id,-32000,error.message,error.status);
     console.error('Agent request failed',{kind:error instanceof Error?error.name:'UnknownError'});
     return failure(id,-32603,'The workspace is unavailable. Try again later.',503);
+  }finally{
+    // Do not expire leases or release on disconnect while dispatched work is still running.
+    releaseAccount?.();releaseTool?.();releaseBody?.();
   }
 }
 export const mcpMethodNotAllowed = () => new Response(null,{status:405,headers:{Allow:'POST',...noStore}});
