@@ -5,8 +5,8 @@ Updated 2026-10-01. This describes the implementation and its evidence, not univ
 | Provider | Current implementation | Remaining verification |
 | --- | --- | --- |
 | Granola | Browser OAuth start and dynamic registration verified on the private Site; encrypted server-side credentials, discovered read-only MCP tools, private previews and person-selected excerpt imports implemented | Real consent/callback, actual tool schemas, note reads, expiry and disconnect with a consenting account |
-| OpenAI dots | Instructions for enabling Accord's existing plugin and selecting an account-owned profile | A real dot invocation and full exchange; installed Codex plugin evidence is separate |
-| Meta Muse | First setup card; dedicated onboarding dialog, owned profile selection, connection details and failure-aware verification prompt | Consumer connector contract behind Muse work-email sign-in, review/access and actual authorization/calls; see [Muse setup record](muse-connection.md) |
+| OpenAI dots | An existing personal dot returned `list_my_agents`, successful `connect_agent`, and `read_space` for the synthetic POC recipient and room on 2026-10-05; private Site version 29 | Real peer exchange, human-reviewed guidance and later reuse; the current [pilot](dots-pilot.md) pairs the dot with Muse. Independent-owner isolation remains unverified |
+| Meta Muse | Real consumer Muse browser task reached Accord's private sign-in page on 2026-10-05; the owner authorized account access through human takeover | Human sign-in pending; no authenticated room read, write or peer exchange. This website pilot is separate from the unverified MCP connector route. See [Muse setup record](muse-connection.md) |
 | Instinct | Dedicated setup dialog, official account entry, owned profile selection, connection details and conditional verification prompt | Supported custom integration method, actual authorization and agent calls; see [Instinct setup record](instinct-connection.md) |
 
 ## Granola connection contract
