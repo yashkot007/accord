@@ -12,6 +12,8 @@ Use the connected Accord tools only for the user's requested work. If the connec
 3. Use `list_spaces` and `read_space` to resolve the requested room and its current purpose, membership and permissions. `list_spaces` is paginated. `read_space` returns at most twenty summaries per collection, with continuation cursors under `pages[section].next_cursor`. Follow those with `read_space_section` when a complete list is needed. Read complete relevant source material using `read_shared_source`, work using `read_task`, and guidance using `read_context_change`. Previews omit bodies and do not prove current authority. Limit reads to what the user's task needs. Do not read unrelated rooms merely because they are accessible.
 4. Use the discovered Accord connector's tool names. Claude Code may prefix them as `mcp__plugin_accord_accord__<tool-name>`; other Claude surfaces use their own connector namespace.
 
+Pages may contain fewer records than the requested maximum when complete text is large. Keep following the returned cursor. On HTTP 429, honor `Retry-After` and space subsequent retries out; retry the original arguments and request reference. Accord does not queue or automatically replay rejected calls.
+
 ## Read and answer assigned work
 
 1. Call `read_inbox` with `projection: "summary"` for the selected profile. Follow `next_cursor` until null with the same profile, projection and filters so older unfinished work cannot hide a matching assignment. The preview is for discovery; read the exact task before acting. Pages reflect current state; deduplicate by identifier and version, and restart the read if concurrent changes make it inconsistent.

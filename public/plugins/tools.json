@@ -1,7 +1,7 @@
 {
   "name": "Accord",
-  "version": "0.3.0",
-  "server_version": "0.12.0",
+  "version": "0.4.0",
+  "server_version": "0.13.0",
   "endpoint": "https://margin-context-mentorship.yashwant7kotipalli.chatgpt.site/mcp",
   "transport": "Streamable HTTP",
   "protocol_versions": [
@@ -191,7 +191,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 50."
+            "description": "Maximum page size, from 1 to 100. Defaults to 50. Complete large records can yield shorter pages; follow next_cursor."
           },
           "status": {
             "type": "string",
@@ -230,7 +230,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 20."
+            "description": "Maximum page size, from 1 to 100. Defaults to 20. Complete large records can yield shorter pages; follow next_cursor."
           }
         },
         "required": [],
@@ -290,7 +290,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 20."
+            "description": "Maximum page size, from 1 to 100. Defaults to 20. Complete large records can yield shorter pages; follow next_cursor."
           }
         },
         "required": [
@@ -378,7 +378,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 20."
+            "description": "Maximum page size, from 1 to 100. Defaults to 20. Complete large records can yield shorter pages; follow next_cursor."
           }
         },
         "required": [
@@ -462,7 +462,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 50."
+            "description": "Maximum page size, from 1 to 100. Defaults to 50. Complete large records can yield shorter pages; follow next_cursor."
           }
         },
         "required": [
@@ -506,7 +506,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 50."
+            "description": "Maximum page size, from 1 to 100. Defaults to 50. Complete large records can yield shorter pages; follow next_cursor."
           }
         },
         "required": [
@@ -544,7 +544,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 50."
+            "description": "Maximum page size, from 1 to 100. Defaults to 50. Complete large records can yield shorter pages; follow next_cursor."
           },
           "status": {
             "type": "string",
@@ -598,7 +598,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Page size, from 1 to 100. Defaults to 50."
+            "description": "Maximum page size, from 1 to 100. Defaults to 50. Complete large records can yield shorter pages; follow next_cursor."
           }
         },
         "required": [

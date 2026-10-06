@@ -1,33 +1,33 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "endpoint": "https://margin-context-mentorship.yashwant7kotipalli.chatgpt.site/mcp",
   "packages": [
     {
       "provider": "Claude",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "kind": "plugin",
       "path": "/plugins/accord-claude.zip",
       "native_authorization": "unverified",
-      "sha256": "26e645a4a1ef0e22e48c84bbafd925217d508175ab886cd07c39a254e5a13610",
-      "size_bytes": 36836
+      "sha256": "c57e097bf1731d05b86a8c749a5bc5cc1add7368b5b335a825a6e19c9d26e6b6",
+      "size_bytes": 37750
     },
     {
       "provider": "Grok Bot",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "kind": "marketplace-candidate",
       "path": "/plugins/accord-grok-bot.zip",
       "native_authorization": "unverified",
-      "sha256": "c5cfe62218eaae5cae1609c2e7194320bf7a15b2f4e19548a5f501431d72dc9e",
-      "size_bytes": 39330
+      "sha256": "74642ba8456cf8899091c37caf49b9e4b464e0c7eda393a22a61c5830165234e",
+      "size_bytes": 40244
     },
     {
       "provider": "Meta Muse",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "kind": "setup-packet",
       "path": "/plugins/accord-muse.zip",
       "native_authorization": "unverified",
-      "sha256": "1be5b345ea42b0c582c46f708494c500f82b1747a393a7b6f41f2b84c1b72e61",
-      "size_bytes": 34755
+      "sha256": "4dffcd387c62db2cecff1e5661ea91cb031e38750404d8179c354bf71c172eea",
+      "size_bytes": 35722
     }
   ]
 }

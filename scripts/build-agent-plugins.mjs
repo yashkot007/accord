@@ -4,9 +4,19 @@ import { dirname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { agentTools } from '../lib/agent-tools.ts';
 import { accordMcpUrl, pluginVersion, assistants } from '../lib/assistant-connections.ts';
+import { defaultMcpAdmissionLimits } from '../lib/mcp-admission.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const inventory = JSON.parse(await readFile(resolve(root, 'public/.well-known/accord.json'), 'utf8'));
+const advertisedAdmission = {
+  body_bytes: 128 * 1024, body_timeout_ms: defaultMcpAdmissionLimits.bodyTimeoutMs,
+  concurrent_bodies: defaultMcpAdmissionLimits.bodies, concurrent_tools: defaultMcpAdmissionLimits.tools,
+  concurrent_tools_per_account: defaultMcpAdmissionLimits.perAccount, concurrent_large_reads: defaultMcpAdmissionLimits.heavyReads,
+  overflow_status: 429, retry_after_seconds: 1, queue: false,
+};
+if (Object.entries(advertisedAdmission).some(([key,value]) => inventory.request_admission?.[key] !== value)) {
+  throw new Error('Published admission policy does not match the shared service.');
+}
 const catalog = Buffer.from(JSON.stringify({
   name: 'Accord', version: pluginVersion, server_version: inventory.version, endpoint: accordMcpUrl,
   transport: 'Streamable HTTP', protocol_versions: inventory.connection.protocol_versions,
