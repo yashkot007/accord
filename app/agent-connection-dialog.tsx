@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bot, Check, Copy, RefreshCw, X } from 'lucide-react';
+import { Check, Copy, RefreshCw, X } from 'lucide-react';
 import { clientRequest, RequestFailure } from '@/lib/client-request';
 import { assistantFor, assistants, museConnectionRequest, verificationPrompt } from '@/lib/assistant-connections';
 import { AssistantInstallGuide } from './assistant-setup-dialog';
 import './agent-connection-dialog.css';
+import { PixelAgentIcon } from './pixel-agent-icon';
 import { PagedSelect } from './paged-select';
 
 type AgentProfile = {
@@ -253,7 +254,7 @@ export function AgentConnectionDialog({ spaceId, initialProfileId, userId, onClo
       <div className="dialog-actions"><button type="button" className="button secondary" disabled={busy} onClick={close}>Cancel</button><button type="submit" className="button primary" disabled={busy || loading || (mode === 'existing' ? !selectedId : !provider.trim())}>{busy ? 'Preparing…' : 'Continue'}</button></div>
     </form>}
 
-    {step === 2 && profile && access && <><div className="agent-connection-profile"><Bot size={21} /><div><strong>{profile.name}</strong><span>{profile.provider}</span></div><span className="agent-connection-attached">{spaceId ? 'In this room' : 'Saved assistant'}</span></div>
+    {step === 2 && profile && access && <><div className="agent-connection-profile"><PixelAgentIcon size={21} /><div><strong>{profile.name}</strong><span>{profile.provider}</span></div><span className="agent-connection-attached">{spaceId ? 'In this room' : 'Saved assistant'}</span></div>
       {recipe?.id !== 'muse' && <div ref={installation}><AssistantInstallGuide recipe={recipe!} endpoint={endpoint} profile={profile} spaceId={spaceId} copyBusy={!!copying} copyingSetup={copying==='setup'} onCopy={value => void copySetup(value)}/></div>}
       {setupFallback && <div className="form-field"><label htmlFor="agent-setup-copy">Select and copy</label><textarea ref={setupField} id="agent-setup-copy" value={setupFallback} readOnly rows={5}/></div>}
       <details className="muse-connection-details"><summary>Connection details</summary><label htmlFor="agent-connection-address">Connection address</label><input id="agent-connection-address" value={endpoint} readOnly/>{recipe?.documentation&&<p><a href={recipe.documentation} target="_blank" rel="noreferrer">Official setup guide</a></p>}{recipe?.packagePath&&recipe.packageKind!=='plugin'&&<p><a href={recipe.packagePath} download>Setup notes</a></p>}<p>Native Claude, Grok Bot and Muse sign-in still needs verification. Use your own Accord sign-in. Contact records activity for this saved assistant; it does not identify the provider or confirm background work.</p></details>
