@@ -1,0 +1,214 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Bot, Check, Copy, RefreshCw, X } from 'lucide-react';
+import { clientRequest, RequestFailure } from '@/lib/client-request';
+import './agent-connection-dialog.css';
+
+type AgentProfile = {
+  id: string;
+  owner_id: string;
+  name: string;
+  provider: string;
+  status: string;
+  last_seen_at?: string | null;
+};
+type Bootstrap = { user: { id: string }; agents: AgentProfile[] };
+type Room = { agents: AgentProfile[] };
+type Props = { spaceId: string; userId: string; onClose: () => void; onAttached: () => void };
+type Creation = { signature: string; requestId: string; profileId?: string };
+
+function contactTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium', timeStyle: 'short',
+  }).format(date);
+}
+
+export function AgentConnectionDialog({ spaceId, userId, onClose, onAttached }: Props) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const instructionsField = useRef<HTMLTextAreaElement>(null);
+  const mounted = useRef(false), revision = useRef(0), writing = useRef(false);
+  const creation = useRef<Creation | null>(null);
+  const setup = useRef<{ profileId: string; baseline: string | null } | null>(null);
+  const [profiles, setProfiles] = useState<AgentProfile[]>([]);
+  const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  const [selectedId, setSelectedId] = useState('');
+  const [name, setName] = useState(''), [provider, setProvider] = useState('');
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<AgentProfile | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
+  const [access, setAccess] = useState(false), [error, setError] = useState('');
+  const [contact, setContact] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false), [copyError, setCopyError] = useState('');
+
+  const current = (value: number) => mounted.current && revision.current === value;
+  const close = () => { if (!writing.current) onClose(); };
+
+  useEffect(() => { if (step === 2) instructionsField.current?.focus(); }, [step]);
+
+  async function freshState() {
+    // Bootstrap also ensures the signed-in person exists before creating a profile.
+    const bootstrap = await clientRequest('/api/workspace') as Bootstrap;
+    if (bootstrap.user.id !== userId) throw new RequestFailure('Your signed-in account changed. Reopen this room before connecting an agent.', 403);
+    const room = await clientRequest(`/api/workspace?space=${encodeURIComponent(spaceId)}`) as Room;
+    return { bootstrap, room };
+  }
+
+  async function loadOptions() {
+    const request = ++revision.current;
+    setLoading(true); setError(''); setAccess(false); setContact(null);
+    try {
+      const { bootstrap } = await freshState();
+      if (!current(request)) return;
+      const owned = bootstrap.agents.filter(agent => agent.owner_id === userId && agent.status !== 'revoked');
+      setProfiles(owned);
+      setSelectedId(previous => owned.some(agent => agent.id === previous) ? previous : owned[0]?.id || '');
+      if (!owned.length) setMode('new');
+      setAccess(true);
+    } catch (failure) {
+      if (current(request)) { setProfiles([]); setError((failure as Error).message); }
+    } finally {
+      if (current(request)) setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    mounted.current = true;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!dialog.current?.open) dialog.current?.showModal();
+    void loadOptions();
+    return () => {
+      mounted.current = false; revision.current++;
+      queueMicrotask(() => {
+        if (document.querySelector('dialog[open]')) return;
+        if (trigger?.isConnected && !trigger.matches(':disabled')) trigger.focus();
+        else {
+          const heading = document.querySelector<HTMLElement>('#workspace-main h1') || document.getElementById('workspace-main');
+          if (heading) { heading.tabIndex = -1; heading.focus(); }
+        }
+      });
+    };
+  // This dialog is mounted for one room and account by its parent.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spaceId, userId]);
+
+  function validateProfile(bootstrap: Bootstrap, room: Room, profileId: string) {
+    const owned = bootstrap.agents.find(agent => agent.id === profileId && agent.owner_id === userId && agent.status !== 'revoked');
+    const attached = room.agents.find(agent => agent.id === profileId && agent.owner_id === userId && agent.status !== 'revoked');
+    if (!owned || !attached) throw new RequestFailure('This profile is no longer available in this room. Review your agent settings before continuing.', 403);
+    return attached;
+  }
+
+  function recordContact(agent: AgentProfile) {
+    const seen = agent.last_seen_at || null, baseline = setup.current?.baseline || null;
+    // Compare server timestamps, rather than the browser clock or a provider label.
+    const newer = seen && (!baseline || new Date(seen).getTime() > new Date(baseline).getTime());
+    setProfile(agent); setContact(newer ? seen : null);
+  }
+
+  async function attach(event: React.FormEvent) {
+    event.preventDefault();
+    if (writing.current || loading || !access) return;
+    if (mode === 'new' && (!name.trim() || !provider.trim())) return;
+    if (mode === 'existing' && !selectedId) return;
+    writing.current = true;
+    const request = ++revision.current;
+    setBusy(true); setError(''); setCopyError('');
+    try {
+      // Recheck account and room access before either write.
+      let { bootstrap } = await freshState();
+      if (!current(request)) return;
+      let profileId = selectedId;
+      if (mode === 'new') {
+        const payload = { name: name.trim(), provider: provider.trim() };
+        const signature = JSON.stringify(payload);
+        if (creation.current?.signature !== signature) creation.current = { signature, requestId: crypto.randomUUID() };
+        const retry = creation.current;
+        if (!retry.profileId) {
+          const receipt = await clientRequest('/api/workspace', 'add_agent', { ...payload, request_id: retry.requestId });
+          // Keep the returned ID before attachment, including when attachment fails.
+          retry.profileId = receipt.id as string;
+          if (!current(request)) return;
+          setCreatedId(retry.profileId);
+          bootstrap = await clientRequest('/api/workspace') as Bootstrap;
+          if (!current(request)) return;
+          if (bootstrap.user.id !== userId) throw new RequestFailure('Your signed-in account changed. Reopen this room before continuing.', 403);
+        }
+        profileId = retry.profileId;
+      }
+      const candidate = bootstrap.agents.find(agent => agent.id === profileId && agent.owner_id === userId && agent.status !== 'revoked');
+      if (!candidate) throw new RequestFailure('Choose an available profile owned by your account.', 403);
+      if (setup.current?.profileId !== profileId) setup.current = { profileId, baseline: candidate.last_seen_at || null };
+      await clientRequest('/api/workspace', 'attach_agent', { space_id: spaceId, agent_id: profileId });
+      if (!current(request)) return;
+      const state = await freshState();
+      if (!current(request)) return;
+      recordContact(validateProfile(state.bootstrap, state.room, profileId));
+      setAccess(true); setStep(2); setCopied(false); onAttached();
+    } catch (failure) {
+      if (current(request)) {
+        setError((failure as Error).message);
+        if (failure instanceof RequestFailure && failure.status === 403) { setAccess(false); setContact(null); setProfile(null); }
+      }
+    } finally {
+      writing.current = false;
+      if (current(request)) setBusy(false);
+    }
+  }
+
+  async function checkContact() {
+    if (writing.current || loading || !setup.current) return;
+    const request = ++revision.current;
+    setLoading(true); setError(''); setAccess(false); setContact(null);
+    try {
+      const state = await freshState();
+      if (!current(request)) return;
+      recordContact(validateProfile(state.bootstrap, state.room, setup.current.profileId));
+      setAccess(true); onAttached();
+    } catch (failure) {
+      if (current(request)) { setProfile(null); setError((failure as Error).message); }
+    } finally {
+      if (current(request)) setLoading(false);
+    }
+  }
+
+  const instructions = profile ? `Use the authenticated Accord plugin in this assistant. If Accord is not installed or its tools are unavailable, stop and tell me; do not simulate the connection.\n\nCall list_my_agents and confirm the available profile with ID "${profile.id}".\nCall connect_agent(agent_id="${profile.id}").\nThen call read_space(agent_id="${profile.id}", space_id="${spaceId}").\n\nReport whether both calls succeeded. Do not grant authority, send instructions, or modify shared context during setup.` : '';
+
+  async function copyInstructions() {
+    const request = revision.current;
+    setCopyError('');
+    try {
+      await navigator.clipboard.writeText(instructions);
+      if (current(request)) setCopied(true);
+    } catch {
+      if (current(request)) setCopyError('Select and copy the instructions below. Clipboard access is unavailable.');
+    }
+  }
+
+  return <dialog ref={dialog} className="agent-connection-dialog" aria-labelledby="agent-connection-title" aria-describedby="agent-connection-description" onCancel={event => {
+    if (writing.current) event.preventDefault(); else close();
+  }}>
+    <div className="dialog-heading"><div><span className="eyebrow">ACCORD · STEP {step} OF 2</span><h2 id="agent-connection-title">{step === 1 ? 'Connect your agent' : 'Bring your agent in'}</h2></div><button type="button" className="icon-button" aria-label="Close agent connection" disabled={busy} onClick={close}><X size={20} /></button></div>
+    <p id="agent-connection-description" className="agent-connection-description">{step === 1 ? 'Choose a profile, then connect from the assistant you use.' : 'Paste these instructions into your assistant, then check for its contact.'}</p>
+
+    {step === 1 && access && <form onSubmit={attach}>
+      {profiles.length > 0 && <fieldset className="agent-connection-choice" disabled={busy || loading}><legend className="sr-only">Agent profile type</legend><label><input type="radio" name="agent-profile-mode" checked={mode === 'existing'} onChange={() => setMode('existing')} /> Existing profile</label><label><input type="radio" name="agent-profile-mode" checked={mode === 'new'} onChange={() => setMode('new')} /> New profile</label></fieldset>}
+      {mode === 'existing' ? <div className="form-field"><label htmlFor="agent-connection-profile">Your agent</label><select id="agent-connection-profile" value={selectedId} disabled={busy || loading} required onChange={event => setSelectedId(event.target.value)}><option value="">Choose an agent</option>{profiles.map(agent => <option key={agent.id} value={agent.id}>{agent.name} · {agent.provider}</option>)}</select></div> : <><div className="form-field"><label htmlFor="agent-connection-name">Agent name</label><input id="agent-connection-name" value={name} required maxLength={80} disabled={busy || !!createdId} placeholder="e.g. My thinking partner" onChange={event => setName(event.target.value)} /></div><div className="form-field"><label htmlFor="agent-connection-provider">Assistant or provider</label><input id="agent-connection-provider" value={provider} required maxLength={80} disabled={busy || !!createdId} placeholder="e.g. OpenAI dot" onChange={event => setProvider(event.target.value)} /></div>{createdId && <p className="agent-connection-hint">Your profile is saved. Retrying uses the same profile.</p>}</>}
+      <p className="agent-connection-hint">This agent can read the room’s shared context. Guidance permissions are granted separately.</p>
+      <div className="dialog-actions"><button type="button" className="button secondary" disabled={busy} onClick={close}>Cancel</button><button type="submit" className="button primary" disabled={busy || loading || (mode === 'existing' ? !selectedId : !name.trim() || !provider.trim())}>{busy ? 'Adding agent…' : createdId ? 'Retry adding to room' : 'Add to room'}</button></div>
+    </form>}
+
+    {step === 2 && profile && access && <><div className="agent-connection-profile"><Bot size={21} /><div><strong>{profile.name}</strong><span>{profile.provider}</span></div><span className="agent-connection-attached">In this room</span></div>
+      <section className="agent-connection-instructions" aria-label="Instructions for your assistant"><label htmlFor="agent-connection-instructions">In your assistant</label><textarea ref={instructionsField} id="agent-connection-instructions" value={instructions} readOnly rows={7} spellCheck={false} /><button type="button" className="button secondary" onClick={copyInstructions}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Instructions copied' : 'Copy instructions'}</button>{copyError && <p role="status" className="agent-connection-hint">{copyError}</p>}</section>
+      <div className={`agent-connection-contact${contact ? ' received' : ''}`} role="status"><span className="agent-connection-dot" /><div><strong>{contact ? 'Authenticated contact received' : 'Awaiting agent contact'}</strong><p>{contact ? contactTime(contact) : setup.current?.baseline ? `Earlier contact: ${contactTime(setup.current.baseline)}. Waiting for a new check-in.` : 'No authenticated contact has been recorded for this profile.'}</p></div></div>
+      <p className="agent-connection-hint">Contact confirms a call for this profile, not its provider identity or a successful room read. Your assistant reports the room read.</p>
+    </>}
+
+    {step === 2 && <div className="dialog-actions"><button type="button" className="button secondary" disabled={loading} onClick={checkContact}><RefreshCw size={16} />{loading ? 'Checking…' : 'Check contact'}</button><button type="button" className="button primary" onClick={close}>Done</button></div>}
+
+    {loading && <p className="agent-connection-hint" role="status">{step === 1 ? 'Loading your profiles…' : 'Checking current room access and agent contact…'}</p>}
+    {error && <div className="agent-connection-error" role="alert"><p>{error}</p>{!access && <button type="button" className="text-button" disabled={busy || loading} onClick={step === 2 ? checkContact : loadOptions}>Review current access</button>}</div>}
+  </dialog>;
+}
