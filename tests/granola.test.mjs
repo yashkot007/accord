@@ -172,7 +172,7 @@ test('HTTP rejects malformed, oversized, unknown and wrong-method actions withou
   const count=f.calls.length;
   assert.equal((await handleGranolaRequest(new Request(url,{method:'POST',headers,body:'invalid'}),loader)).status,400);
   assert.equal((await handleGranolaRequest(new Request(url,{method:'POST',headers,body:JSON.stringify({action:'unknown',args:{}})}),loader)).status,400);
-  assert.equal((await handleGranolaRequest(new Request(url,{method:'POST',headers,body:'x'.repeat(70000)}),loader)).status,413);
+  assert.equal((await handleGranolaRequest(new Request(url,{method:'POST',headers,body:'x'.repeat(128*1024+1)}),loader)).status,413);
   assert.equal((await handleGranolaRequest(new Request(url,{method:'DELETE'}),loader)).status,405);assert.equal(f.calls.length,count);
 });
 test('HTTP status is owner-scoped and omits credentials, drafts and OAuth details',async()=>{
