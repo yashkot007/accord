@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./accord-theme.css";
 
 export const metadata: Metadata = {
   title: "Accord — Personal agents. Shared purpose.",
@@ -20,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased accord-neo">{children}</body>
     </html>
   );
 }

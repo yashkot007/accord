@@ -1,0 +1,79 @@
+/* Accord: quiet color, decisive shapes, and pixel glyphs for assistants. */
+:root{--bg:#f6f3e7;--paper:#fffdf3;--ink:#233c2d;--muted:#58674f;--blue:#31583f;--blue-light:#e7edda;--line:#81947a;background:var(--bg);color:var(--ink)}
+h1,h2,h3{font-family:'Space Grotesk','DM Sans',sans-serif}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline-color:#31583f}
+input,select,textarea{border-color:var(--line);border-radius:3px;background:var(--paper)}
+input:focus,textarea:focus,select:focus{outline-color:var(--blue)}
+input::placeholder,textarea::placeholder{color:#627159}
+.pixel-agent-icon{flex-shrink:0;vertical-align:middle;image-rendering:pixelated}
+.accord-neo .accord-session-workspace{background:#f6f3e7;--bg:#f6f3e7;--ink:#233c2d;--muted:#58674f;--blue:#31583f;--blue-light:#e7edda;--line:#81947a;font-family:'DM Sans',sans-serif}
+.accord-neo .accord-session-workspace .topbar{background:var(--bg);border-bottom:2px solid var(--ink)}
+.session-wordmark{font-family:'Space Grotesk',sans-serif;font-weight:650;letter-spacing:-.06em}
+.accord-neo .accord-session-workspace h1{font-family:'Space Grotesk',sans-serif;font-weight:650;letter-spacing:-.055em}
+.accord-neo .accord-session-workspace .room-heading{margin-bottom:24px}
+.accord-neo .accord-session-workspace .button,.accord-neo .agent-connection-dialog .button{border:2px solid var(--ink);border-radius:3px;box-shadow:3px 3px 0 var(--ink);min-height:46px;white-space:normal;line-height:1.5;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.accord-neo .accord-session-workspace .button.primary,.accord-neo .agent-connection-dialog .button.primary{background:var(--blue);border-color:var(--ink);color:#fffef6}
+.accord-neo .accord-session-workspace .button.secondary,.accord-neo .agent-connection-dialog .button.secondary{background:var(--paper);border-color:var(--ink);color:var(--ink)}
+.accord-neo .accord-session-workspace .button:hover:not(:disabled):not([aria-disabled="true"]),.accord-neo .agent-connection-dialog .button:hover:not(:disabled):not([aria-disabled="true"]){transform:translate(1px,1px);box-shadow:2px 2px 0 var(--ink)}
+.accord-neo .accord-session-workspace .button.primary:hover:not(:disabled):not([aria-disabled="true"]),.accord-neo .agent-connection-dialog .button.primary:hover:not(:disabled):not([aria-disabled="true"]){background:#244932}
+.accord-neo .accord-session-workspace .button.secondary:hover:not(:disabled):not([aria-disabled="true"]),.accord-neo .agent-connection-dialog .button.secondary:hover:not(:disabled):not([aria-disabled="true"]){background:#e7edda}
+.accord-neo .accord-session-workspace .button:active:not(:disabled):not([aria-disabled="true"]),.accord-neo .agent-connection-dialog .button:active:not(:disabled):not([aria-disabled="true"]){transform:translate(3px,3px);box-shadow:none}
+.accord-neo .accord-session-workspace .button:disabled,.accord-neo .accord-session-workspace .button[aria-disabled="true"],.accord-neo .agent-connection-dialog .button:disabled,.accord-neo .agent-connection-dialog .button[aria-disabled="true"]{transform:none;box-shadow:none;opacity:.65}
+.accord-neo .accord-session-workspace .button.quiet{background:transparent;border-color:transparent;box-shadow:none}
+.accord-neo .accord-session-workspace .button.quiet:hover:not(:disabled):not([aria-disabled="true"]){background:#e7edda;transform:none;box-shadow:none}
+.accord-neo .accord-session-workspace .heading-actions,.accord-neo .agent-connection-dialog .dialog-actions{gap:14px}
+.accord-neo .accord-session-workspace .tabs{border-color:var(--ink);gap:28px}
+.accord-neo .accord-session-workspace .tabs button{font-size:.9375rem;color:var(--muted);padding:7px 4px 16px}
+.accord-neo .accord-session-workspace .tabs button.active{color:var(--ink);font-weight:650}
+.accord-neo .accord-session-workspace .tabs button.active:after{height:3px;background:var(--ink);bottom:0}
+.accord-neo .accord-session-workspace .tabs button:focus-visible{outline-offset:-4px}
+.accord-neo .accord-session-workspace .tabs button>span{border-radius:2px;background:#d7e0c5;color:var(--ink)}
+.accord-neo .accord-session-workspace .relationship-map,.accord-neo .accord-session-workspace .panel,.accord-neo .accord-session-workspace .quiet-card,.accord-neo .accord-session-workspace .attention-card,.accord-neo .accord-session-workspace .person-card,.accord-neo .accord-session-workspace .connection-card,.accord-neo .accord-session-workspace .context-card,.accord-neo .accord-session-workspace .empty{background:var(--paper);border:1px solid var(--line);border-radius:4px;box-shadow:none}
+.accord-neo .accord-session-workspace .room-work-card{border:2px solid var(--ink);border-radius:4px;background:var(--paper);box-shadow:4px 4px 0 #d7e0c5;margin-bottom:20px;transition:border-color .15s ease,box-shadow .15s ease}
+.accord-neo .accord-session-workspace .room-work-card:hover{border-color:var(--blue);box-shadow:4px 4px 0 #b9cbab}
+.accord-neo .accord-session-workspace .room-work-open h3{font-family:'Space Grotesk',sans-serif;font-weight:650;font-size:1.125rem}
+.accord-neo .accord-session-workspace .room-work-meta>span:first-child,.accord-neo .accord-session-workspace .room-work-date,.accord-neo .accord-session-workspace .room-work-footer{font-size:.8125rem}
+.accord-neo .accord-session-workspace .room-work-meta>span:first-child{flex-wrap:wrap}
+.accord-neo .accord-session-workspace .room-work-footer{border-color:var(--line);background:#edf0e2}
+.accord-neo .accord-session-workspace .room-work-open:focus-visible{outline:3px solid var(--blue);outline-offset:-6px;border-radius:3px}
+.accord-neo .accord-session-workspace .room-purpose summary:focus-visible{outline:2px solid var(--blue);outline-offset:3px;border-radius:2px}
+.accord-neo .accord-session-workspace .room-presence,.accord-neo .accord-session-workspace .room-presence>span,.accord-neo .accord-session-workspace .room-presence .text-button{font-size:.875rem}
+.accord-neo .accord-session-workspace .room-presence .pixel-agent-icon{width:18px;height:18px}
+.accord-neo .accord-session-workspace .agent-node{background:#edf0e2;border:1px solid var(--line);border-radius:3px}
+.accord-neo .accord-session-workspace .agent-avatar{width:44px;height:44px;background:#dde7ce;color:var(--ink);border:1px solid var(--line);border-radius:3px}
+.accord-neo .accord-session-workspace .agent-avatar .pixel-agent-icon{width:24px;height:24px;animation:pixel-agent-arrive .2s steps(2,end) both}
+.accord-neo .accord-session-workspace .person-avatar,.accord-neo .accord-session-workspace .source-icon{background:#e7edda;color:var(--blue);border-radius:3px}
+.accord-neo .accord-session-workspace .scope-tag{background:#f2f2e4;border-color:var(--line);border-radius:2px;color:var(--muted)}
+.accord-neo .accord-session-workspace .badge{border-radius:2px;font-size:.75rem}
+.accord-neo .accord-session-workspace .badge.completed,.accord-neo .accord-session-workspace .badge.accepted,.accord-neo .accord-session-workspace .badge.connected{background:#dce8ce;color:#31533a;border-color:#81947a}
+.accord-neo .accord-session-workspace .badge.working,.accord-neo .accord-session-workspace .badge.queued{background:#e8ecdc;color:#4b5c32;border-color:#a3b28d}
+.accord-neo .accord-session-workspace .badge.pending,.accord-neo .accord-session-workspace .badge.needs_input{background:#fff0cc;color:#75591c;border-color:#c6ae77}
+.accord-neo .accord-session-workspace .badge.revoked,.accord-neo .accord-session-workspace .badge.declined{background:#eee9dc;color:#655e4f;border-color:#bdb29b}
+.accord-neo .accord-session-workspace .map-label,.accord-neo .accord-session-workspace .source-row,.accord-neo .accord-session-workspace .activity-item,.accord-neo .accord-session-workspace .card-actions,.accord-neo .accord-session-workspace .grant-lines,.accord-neo .accord-session-workspace .grant-line{border-color:#c6d0b9}
+.accord-neo .accord-session-workspace .source-row:hover{background:#edf0e2}
+.accord-neo .accord-session-workspace .source-row:focus-visible{outline:3px solid var(--blue);outline-offset:-4px}
+.accord-neo .accord-session-workspace .empty h3{color:var(--ink)}
+.accord-neo .accord-session-workspace .icon-button{border-radius:3px;color:var(--muted)}
+.accord-neo .accord-session-workspace .icon-button:hover{background:#e7edda;color:var(--ink)}
+.accord-neo .accord-session-workspace dialog{background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:4px;box-shadow:7px 7px 0 var(--ink)}
+.accord-neo .accord-session-workspace dialog::backdrop{background:#19372b45;backdrop-filter:blur(3px)}
+.accord-neo .accord-session-workspace dialog .dialog-heading h2{font-family:'Space Grotesk',sans-serif;letter-spacing:-.045em}
+.accord-neo .agent-connection-dialog{--ink:#233c2d;--muted:#58674f;--blue:#31583f;--blue-light:#e7edda;--line:#81947a;background:#fffdf3;color:var(--ink);border:2px solid var(--ink);border-radius:4px;box-shadow:7px 7px 0 var(--ink)}
+.accord-neo .agent-connection-dialog::backdrop{background:#19372b45;backdrop-filter:blur(3px)}
+.accord-neo .agent-connection-dialog .dialog-heading h2{font-family:'Space Grotesk',sans-serif;font-weight:650;letter-spacing:-.045em}
+.accord-neo .agent-connection-dialog :is(.eyebrow,.agent-connection-description,.agent-connection-hint,.agent-connection-feedback,.assistant-name-details,.agent-connection-profile>div>span,.agent-connection-contact p){color:var(--muted)}
+.accord-neo .agent-connection-dialog :is(.form-field label,.agent-connection-instructions>label){color:var(--ink)}
+.accord-neo .agent-connection-dialog :is(.form-field input,.form-field select,.form-field textarea,.agent-connection-instructions textarea){border-color:var(--line);border-radius:3px;background:#f6f3e7;color:var(--ink);font-size:1rem}
+.accord-neo .agent-connection-dialog .form-field input:disabled{background:#edf0e2;color:var(--muted)}
+.accord-neo .agent-connection-dialog :is(.form-field textarea,.agent-connection-instructions textarea){font-size:.875rem}
+.accord-neo .agent-connection-dialog :is(input,select,textarea,button,a[href],summary,h3[tabindex]):focus-visible{outline-color:var(--blue)}
+.accord-neo .agent-connection-dialog .agent-connection-profile{border:1px solid var(--line);border-radius:3px;background:#e7edda}
+.accord-neo .agent-connection-dialog .agent-connection-profile>.pixel-agent-icon{width:24px;height:24px;flex-shrink:0;color:var(--blue)}
+.accord-neo .agent-connection-dialog .agent-connection-attached{color:#3f633e;border:1px solid var(--line);background:#dce8ce;padding:3px 6px;border-radius:2px}
+.accord-neo .agent-connection-dialog .agent-connection-contact{border-color:var(--line)}
+.accord-neo .agent-connection-dialog .agent-connection-dot{border-radius:0;background:#8c987a}
+.accord-neo .agent-connection-dialog .agent-connection-contact.received .agent-connection-dot{background:#31583f}
+.accord-neo .agent-connection-dialog .agent-connection-error{border:1px solid #b8674f;border-radius:3px;background:#fff1e8;color:#983b2d}
+@keyframes pixel-agent-arrive{from{transform:translateY(3px);opacity:.4}to{transform:translateY(0);opacity:1}}
+@media(max-width:720px){.accord-neo .accord-session-workspace .topbar{padding:16px 20px}.accord-neo .accord-session-workspace .room-heading .heading-actions{padding-right:4px}.accord-neo .accord-session-workspace .room-work-open{padding:20px}.accord-neo .accord-session-workspace .room-work-meta{gap:10px;flex-wrap:wrap}.accord-neo .accord-session-workspace .agent-node{border-radius:3px}.accord-neo .agent-connection-dialog{border-radius:4px;box-shadow:5px 5px 0 var(--ink)}}
+@media(prefers-reduced-motion:reduce){.pixel-agent-icon,.accord-neo .accord-session-workspace .agent-avatar .pixel-agent-icon{animation:none}.accord-neo .accord-session-workspace .button,.accord-neo .agent-connection-dialog .button,.accord-neo .accord-session-workspace .room-work-card{transition:none}.accord-neo .accord-session-workspace .button:hover:not(:disabled):not([aria-disabled="true"]),.accord-neo .accord-session-workspace .button:active:not(:disabled):not([aria-disabled="true"]),.accord-neo .agent-connection-dialog .button:hover:not(:disabled):not([aria-disabled="true"]),.accord-neo .agent-connection-dialog .button:active:not(:disabled):not([aria-disabled="true"]){transform:none}}

@@ -1,5 +1,9 @@
 # Accord product quality plan
 
+## Approved visual direction · 2026-10-06
+
+The owner chose Neo-Brutalism with pixel assistant details after comparing 22 styles. Use muted green and cream, Space Grotesk headings, clear outlines, small corner radii and restrained offset shadows. The entrance stays focused on its welcome and the two actions: join a session or start a new one. Assistant glyphs accompany actual names, connection states and exchanges; they do not simulate activity. Preserve readable permissions, keyboard focus, mobile reflow and reduced motion. This design decision does not close the functional POC or interoperability acceptance gates below.
+
 ## Current priority, changed by the owner on 2026-10-01
 
 The active goal is a functional POC that the owner can test and approve. Prove the core relationship loop and fix failures in that loop first. After the owner approves the POC, decide its delivery format (app, connector, extension, web service or a combination). Interface direction follows that decision. The research and broader production requirements below remain recorded background, not reasons to delay a functional POC with more design or marketplace work.
