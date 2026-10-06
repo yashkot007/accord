@@ -12,17 +12,18 @@ import http from 'node:http';
 import {build} from 'esbuild';
 
 const projectRoot=fileURLToPath(new URL('../',import.meta.url));
-const options={rows:250,reads:60,writes:8,concurrency:[1,8,24],revision:null,output:null,contactOnly:false};
+const options={rows:250,reads:60,writes:8,concurrency:[1,8,24],revision:null,output:null,contactOnly:false,inboxProjection:'full'};
 for (const arg of process.argv.slice(2)) {
   if (arg==='--help') {
-    console.log('Isolated local Worker/D1 measurement; never a production capacity claim.\nOptions: --rows=250 --reads=60 --writes=8 --concurrency=1,8,24 --revision=<git-ref> --contact-only --output=/private/tmp/report.json');
+    console.log('Isolated local Worker/D1 measurement; never a production capacity claim.\nOptions: --rows=250 --reads=60 --writes=8 --concurrency=1,8,24 --inbox-projection=summary|full (default full) --revision=<git-ref> --contact-only --output=/private/tmp/report.json');
     process.exit(0);
   }
   if (arg==='--contact-only') {options.contactOnly=true;continue;}
   const [key,...parts]=arg.replace(/^--/,'').split('='), value=parts.join('=');
-  assert.ok(['rows','reads','writes','concurrency','revision','output'].includes(key)&&value,`Unknown option: ${arg}`);
-  options[key]=key==='concurrency'?value.split(',').map(Number):['rows','reads','writes'].includes(key)?Number(value):value;
+  assert.ok(['rows','reads','writes','concurrency','revision','output','inbox-projection'].includes(key)&&value,`Unknown option: ${arg}`);
+  options[key==='inbox-projection'?'inboxProjection':key]=key==='concurrency'?value.split(',').map(Number):['rows','reads','writes'].includes(key)?Number(value):value;
 }
+assert.ok(['summary','full'].includes(options.inboxProjection),'Invalid inbox projection');
 for(const [key,max] of [['rows',5000],['reads',3000],['writes',100]]) assert.ok(Number.isSafeInteger(options[key])&&options[key]>=1&&options[key]<=max,`Invalid ${key}`);
 assert.ok(options.concurrency.length<=6&&new Set(options.concurrency).size===options.concurrency.length&&options.concurrency.every(n=>Number.isSafeInteger(n)&&n>=1&&n<=100),'Invalid or duplicate concurrency');
 if(options.output) assert.ok(path.resolve(options.output).startsWith('/private/tmp/'),'Reports must be written in /private/tmp');
@@ -136,13 +137,44 @@ try {
     } finally {release();}
   };
   const args={agent_id:f.recipient_id};
+  // Omit projection for full mode, preserving requests to historical revisions.
+  const inboxInput=options.inboxProjection==='summary'?{projection:'summary'}:{};
+  const assertInbox=value=>{
+    assert.ok(value.instructions.length<=100);
+    if(options.inboxProjection==='summary') {
+      assert.equal(value.projection,'summary');
+      const keys=['id','space_id','grant_id','from_agent','to_agent','title','status','version','scope','channel','created_at','updated_at','from_name','to_name','body_preview','body_characters','feedback_available'].sort();
+      for(const item of value.instructions) {
+        assert.deepEqual(Object.keys(item).sort(),keys,'Unexpected inbox summary shape');
+        assert.equal(Object.hasOwn(item,'body'),false);assert.equal(Object.hasOwn(item,'feedback'),false);
+        assert.equal(typeof item.body_preview,'string');assert.ok([...item.body_preview].length<=300);
+        assert.ok(Number.isSafeInteger(item.body_characters)&&item.body_characters>=[...item.body_preview].length);
+        assert.equal(typeof item.feedback_available,'boolean');assert.ok(Number.isSafeInteger(item.version)&&item.version>=0);
+        for(const key of ['id','space_id','grant_id','from_agent','to_agent','title','scope','channel','from_name','to_name'])assert.equal(typeof item[key],'string');
+        assert.ok(['queued','working','needs_input'].includes(item.status));
+      }
+    } else for(const item of value.instructions){assert.equal(typeof item.body,'string');assert.equal(typeof item.feedback,'string');}
+  };
   // Full cursor walks before writes establish exact fixture counts and unique IDs.
   const walk=async(name,key,expected,extra={})=>{
     const seen=new Set();let cursor=null;
-    do {const result=await invoke('recipient',name,{...args,...extra,limit:17,...(cursor?{cursor}:{})});assert.ok(result[key].length<=17);for(const row of result[key]){assert.ok(!seen.has(row.id),'Repeated pagination ID');seen.add(row.id);}cursor=result.next_cursor;}while(cursor);
+    do {const result=await invoke('recipient',name,{...args,...extra,limit:17,...(cursor?{cursor}:{})});assert.ok(result[key].length<=17);if(name==='read_inbox')assertInbox(result);for(const row of result[key]){assert.ok(!seen.has(row.id),'Repeated pagination ID');seen.add(row.id);}cursor=result.next_cursor;}while(cursor);
     assert.equal(seen.size,expected,`Unexpected ${name} count`);
   };
-  if(!options.contactOnly){await walk('read_inbox','instructions',f.queued);await walk('read_context','context',f.accepted);await walk('read_space_section','items',f.rows,{space_id:f.space_id,section:'sources'});}
+  let inboxDetailProbe=null;
+  if(!options.contactOnly){
+    await walk('read_inbox','instructions',f.queued,inboxInput);await walk('read_context','context',f.accepted);await walk('read_space_section','items',f.rows,{space_id:f.space_id,section:'sources'});
+    // Exact record checks are intentionally outside the measured request samples.
+    const inbox=await invoke('recipient','read_inbox',{...args,...inboxInput,limit:1});assertInbox(inbox);
+    const selected=inbox.instructions[0];assert.equal(selected.id,'workload-task-000000');
+    const detail=await invoke('recipient','read_task',{...args,task_id:selected.id});
+    assert.equal(detail.task.id,selected.id);assert.equal(detail.task.title,selected.title);assert.equal(detail.task.version,selected.version);
+    assert.equal(detail.task.body,'b'.repeat(8000));assert.equal(detail.task.feedback,'');
+    if(options.inboxProjection==='summary'){assert.equal(selected.body_preview,'b'.repeat(300));assert.equal(selected.body_characters,8000);assert.equal(selected.feedback_available,false);}
+    let savedFeedbackComplete=null;
+    if(f.rows>1){const closed=await invoke('recipient','read_task',{...args,task_id:'workload-task-000001'});assert.equal(closed.task.body,'b'.repeat(8000));assert.equal(closed.task.feedback,'f'.repeat(8000));assert.equal(closed.updates[0].feedback,'f'.repeat(8000));savedFeedbackComplete=true;}
+    inboxDetailProbe={projection:options.inboxProjection,complete_body:true,body_characters:8000,saved_feedback_complete:savedFeedbackComplete,note:'Preflight checks only; excluded from measurement samples.'};
+  }
   await local('/__reset_contact');
   const contact=[];
   for(let i=0;i<10;i++)await invoke('recipient','read_context',{...args,limit:1},contact);
@@ -159,8 +191,8 @@ try {
     };
     const start=performance.now();
     for(let i=0;i<Math.max(options.reads,options.writes);i++) {
-      if(i<options.reads){const name=['read_inbox','read_context','read_space'][i%3];const input=name==='read_space'?{...args,space_id:f.space_id}:{...args,limit:20};jobs.push(invoke('recipient',name,input,records).then(value=>{
-        if(name==='read_inbox')assert.ok(value.instructions.length<=20);
+      if(i<options.reads){const name=['read_inbox','read_context','read_space'][i%3];const input=name==='read_space'?{...args,space_id:f.space_id}:{...args,limit:20,...(name==='read_inbox'?inboxInput:{})};jobs.push(invoke('recipient',name,input,records).then(value=>{
+        if(name==='read_inbox'){assert.ok(value.instructions.length<=20);assertInbox(value);}
         if(name==='read_context')assert.equal(value.context.length,Math.min(20,f.accepted));
         if(name==='read_space'){assert.equal(value.summaries,true);for(const collection of ['people','agents','grants','sources','tasks','changes','events'])assert.ok(value[collection].length<=20);assert.ok(value.sources.every(s=>s.content===undefined));assert.ok(value.tasks.every(t=>t.body===undefined));}
       }));}
@@ -173,7 +205,7 @@ try {
     const scenario={concurrency,peak_inflight_requests:peak,elapsed_ms:elapsed,requests_per_second:records.length/(elapsed/1000),...summary(records),operations:groups,correctness:{unique_sends:receipts.length,unique_reports:receipts.length,duplicate_receipts_equal:true,one_event_per_write:true},records};scenarios.push(scenario);
     console.log(JSON.stringify({concurrency,peak_inflight_requests:peak,elapsed_ms:Math.round(elapsed),requests:records.length,p50_ms:scenario.p50_ms,p95_ms:scenario.p95_ms,operations:groups}));
   }
-  const report={kind:'non-production-local-agent-workload',created_at:new Date().toISOString(),revision,source_mode:options.revision?'committed revision':'working tree',source_hashes:sourceHashes,compiled_worker_sha256:createHash('sha256').update(compiled.outputFiles[0].text).digest('hex'),environment:{node:process.version,miniflare:JSON.parse(await readFile(path.join(projectRoot,'node_modules/miniflare/package.json'),'utf8')).version,backend:'Miniflare workerd with local D1',binding:'fresh synthetic-only DB',external_worker_fetch:'disabled',migrations:migrations.length},configuration:options,fixture:{rows_per_collection:f.rows,members:f.rows+2,agents:f.rows+2,sources:f.rows,tasks:f.rows,changes:f.rows,grants:f.rows+1,accepted_context:f.accepted,actionable_inbox:f.queued,source_content_characters:19900+'Synthetic source 000000 '.length,task_body_characters:8000,adopted_context_characters:5000},contact_probe:{description:'10 sequential real MCP read_context calls, limit=1, synthetic contact initially pending with last_seen_at null',...summary(contact),records:contact},room_query_probe:roomQueryProbe,scenarios,limitations:['Local timings include asynchronous Miniflare dispatchFetch bridge and response serialization. They do not establish production capacity.','No production traffic, identities, tokens, deployment, or remote bindings. Worker external fetches are rejected.','Successful runs dispose local runtimes and remove scratch storage. Emergency workload/disposal deadlines terminate the process and may leave synthetic scratch storage; its path is printed.','Auth is replaced by an explicit synthetic-only role selector in this isolated harness. Production auth, edge network, cold starts, billing, remote D1 quotas, and geographic replication are unmeasured.','Query counts are exact application statement executions. round_trips count binding calls and batch submissions, not production network hops.','To expose actual D1 metadata, the instrumentation executes first() SQL with all() and projects the first row. This preserves the tested Workspace calls but includes all() result materialization in timings.','Payload bytes count the complete JSON-RPC response body; MCP text plus structuredContent duplicate record data.','Runs use one local D1 database; later scenarios include completed synthetic writes from earlier scenarios.','Latency starts after admission by the local concurrency limiter, excludes time waiting in its queue, and includes the full response body read. Percentiles use nearest rank; ten-request contact p95 is its maximum and includes its first request.'],correctness:{pagination:options.contactOnly?'Skipped for contact-only probe':'Complete unique cursor walks match seeded actionable inbox, accepted context, and sources',mcp_text_matches_structured_content:true},output};
+  const report={kind:'non-production-local-agent-workload',created_at:new Date().toISOString(),revision,source_mode:options.revision?'committed revision':'working tree',source_hashes:sourceHashes,compiled_worker_sha256:createHash('sha256').update(compiled.outputFiles[0].text).digest('hex'),environment:{node:process.version,miniflare:JSON.parse(await readFile(path.join(projectRoot,'node_modules/miniflare/package.json'),'utf8')).version,backend:'Miniflare workerd with local D1',binding:'fresh synthetic-only DB',external_worker_fetch:'disabled',migrations:migrations.length},configuration:options,fixture:{rows_per_collection:f.rows,members:f.rows+2,agents:f.rows+2,sources:f.rows,tasks:f.rows,changes:f.rows,grants:f.rows+1,accepted_context:f.accepted,actionable_inbox:f.queued,source_content_characters:19900+'Synthetic source 000000 '.length,task_body_characters:8000,adopted_context_characters:5000},contact_probe:{description:'10 sequential real MCP read_context calls, limit=1, synthetic contact initially pending with last_seen_at null',...summary(contact),records:contact},room_query_probe:roomQueryProbe,inbox_detail_probe:inboxDetailProbe,scenarios,limitations:['Local timings include asynchronous Miniflare dispatchFetch bridge and response serialization. They do not establish production capacity.','No production traffic, identities, tokens, deployment, or remote bindings. Worker external fetches are rejected.','Successful runs dispose local runtimes and remove scratch storage. Emergency workload/disposal deadlines terminate the process and may leave synthetic scratch storage; its path is printed.','Auth is replaced by an explicit synthetic-only role selector in this isolated harness. Production auth, edge network, cold starts, billing, remote D1 quotas, and geographic replication are unmeasured.','Query counts are exact application statement executions. round_trips count binding calls and batch submissions, not production network hops.','To expose actual D1 metadata, the instrumentation executes first() SQL with all() and projects the first row. This preserves the tested Workspace calls but includes all() result materialization in timings.','Payload bytes count the complete JSON-RPC response body; MCP text plus structuredContent duplicate record data.','Runs use one local D1 database; later scenarios include completed synthetic writes from earlier scenarios.','Latency starts after admission by the local concurrency limiter, excludes time waiting in its queue, and includes the full response body read. Percentiles use nearest rank; ten-request contact p95 is its maximum and includes its first request.'],correctness:{pagination:options.contactOnly?'Skipped for contact-only probe':'Complete unique cursor walks match seeded actionable inbox, accepted context, and sources',mcp_text_matches_structured_content:true},output};
   await writeFile(output,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({output,contact_probe:summary(contact)}));
 } catch(error) {
   if(error?.code==='EPERM')console.error('Local loopback listening is blocked by the sandbox. Run this same synthetic-only script with local listener permission; it never falls back to remote D1.');
